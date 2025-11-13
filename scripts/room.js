@@ -3,10 +3,10 @@ elation.require([
      'engine.things.generic', 'engine.things.label', 'engine.things.skybox',
     'janusweb.object', 'janusweb.portal', 'janusweb.image', 'janusweb.video', 'janusweb.text', 'janusweb.janusparagraph',
     'janusweb.sound', 'janusweb.januslight', 'janusweb.janusparticle', 'janusweb.janusghost',
-    'janusweb.translators.bookmarks', 'janusweb.translators.reddit', 'janusweb.translators.error', 'janusweb.translators.blank', 'janusweb.translators.default', 'janusweb.translators.dat', 'janusweb.translators.janusvfs'
+    'janusweb.translators.bookmarks', 'janusweb.translators.reddit', 'janusweb.translators.error', 'janusweb.translators.blank', 'janusweb.translators.default', 'janusweb.translators.dat', 'janusweb.translators.janusvfs', 'janusweb.translators.xrfragments'
   ], function() {
   let roomTranslators = false;
-  function initRoomTranslators() {
+  function initRoomTranslators(room) {
     roomTranslators = {
       '^janus-vfs:': elation.janusweb.translators.janusvfs({janus: janus}),
       '^about:blank$': elation.janusweb.translators.blank({janus: janus}),
@@ -14,8 +14,9 @@ elation.require([
       '^dat:': elation.janusweb.translators.dat({janus: janus}),
       '^https?:\/\/(www\.)?reddit.com': elation.janusweb.translators.reddit({janus: janus}),
       '^error$': elation.janusweb.translators.error({janus: janus}),
+      '.*\.(gltf|glb|dae)$': elation.janusweb.translators.xrfragments({janus: janus}),
       '^default$': elation.janusweb.translators.default({janus: janus})
-    };
+    }
   }
   elation.component.add('engine.things.janusroom', function() {
     this.postinit = function() {
@@ -100,7 +101,7 @@ elation.require([
       });
 
       if (!roomTranslators) {
-        initRoomTranslators();
+        initRoomTranslators(this);
       }
 
       this.spawnpoint = new THREE.Object3D();
@@ -301,8 +302,8 @@ elation.require([
           }
         }
       } else if (this.urlhash) {
-        // XR Fragments spec (Level1: URL) https://xrfragment.org/#teleport%20camera
-        let obj = this.getObjectById(this.urlhash);
+        // XR Fragments deeplink spec (Level1: URL) https://xrfragment.org/#teleport%20camera
+        let obj = this.getObjectById(this.urlhash) || this.getObjectByDeepName(this.urlhash)
         if (obj) {
           obj.localToWorld(spawnpoint.position.set(0,0,0));
           spawnpoint.orientation.setFromRotationMatrix(obj.objects['3d'].matrixWorld.lookAt(spawnpoint.position, obj.localToWorld(V(0,0,-1)), obj.localToWorld(V(0,1,0).sub(spawnpoint.position))));
@@ -711,7 +712,18 @@ elation.require([
       if (baseurl) {
         this.baseurl = baseurl;
       }
-      var source = this.parseSource(sourcecode);
+
+      var source
+      // scan sourcecode for non-JML microformats within translators 
+      for( m in roomTranslators ){
+        let rt = roomTranslators[m] 
+        if( rt.parseSource && rt.parseSource.regex ){
+          source = rt.parseSource(sourcecode,this)
+          if( source ) break;
+        }
+      }
+      if( !source ) source = this.parseSource(sourcecode)
+
       if (source && source.source) {
         this.roomsrc = source.source;
         var datapath = elation.config.get('janusweb.datapath', '/media/janusweb');
@@ -1956,8 +1968,18 @@ elation.require([
 */
 
     }
-    this.getObjectById = function(js_id) {
-      return this.jsobjects[js_id];
+    this.getObjectByDeepName = function(name) {
+      let modelobj
+      let obj 
+      for( i in this.jsobjects ){
+        let jsobj = this.jsobjects[i]
+        if( jsobj.modelasset && jsobj.modelasset._model && (obj = jsobj.modelasset._model.getObjectByName(name)) ){
+          obj.objects = { '3d': obj } // compatibility
+          console.dir(obj)
+          if( obj ) break;
+        }
+      }
+      return obj 
     }
     this.getObjectsByClassName = function(classname) {
       var objects = [];
