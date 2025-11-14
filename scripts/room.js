@@ -1969,17 +1969,18 @@ elation.require([
 
     }
     this.getObjectByDeepName = function(name) {
-      let modelobj
-      let obj 
-      for( i in this.jsobjects ){
-        let jsobj = this.jsobjects[i]
-        if( jsobj.modelasset && jsobj.modelasset._model && (obj = jsobj.modelasset._model.getObjectByName(name)) ){
-          obj.objects = { '3d': obj } // compatibility
-          console.dir(obj)
-          if( obj ) break;
-        }
+      if( !this.janus.currentroom ) return
+      let obj = this.janus.currentroom.objects['3d'].getObjectByName(name)
+      if( obj ){ // return polyglot THREE/janusweb object for convenience
+        return new Proxy(obj,{
+          set(me,k,v){ obj[k] = v; return true;    },
+          get(me,k){ 
+            if( k == 'objects' ) return { '3d': me }
+            return obj[k]; 
+          }
+        })
       }
-      return obj 
+      return obj
     }
     this.getObjectsByClassName = function(classname) {
       var objects = [];

@@ -7,7 +7,7 @@ elation.require([], function() {
       return new Promise(elation.bind(this, function(resolve, reject) {
 
         var room = this.room = args.room;
-        elation.events.add(room._room, 'room_load_complete', this.spawnUser.bind(this) )
+        this.setupEvents()
 
         var datapath = elation.config.get('janusweb.datapath', '/media/janusweb');
 
@@ -31,7 +31,7 @@ elation.require([], function() {
       }));
     }
 
-    this.spawnUser = function(source) {
+    this.spawnUserAtFragment = function(source) {
       // XR Fragments deeplink spec: explicit or default spawn
       // https://xrfragment.org/#teleport%20camera
       if( ! this.room.urlhash ) this.room.urlhash = 'spawn'
@@ -39,37 +39,38 @@ elation.require([], function() {
       console.log("[xrfragment] camera teleport")
     }
 
+    this.setupEvents = function(){
+      elation.events.add(room._room, 'room_load_complete', this.spawnUserAtFragment.bind(this) )
+    }
+
     // translate XR Fragments microformat into JML
     this.parseSource = function(sourcecode, room){
       this.room = room
-      elation.events.add(room._room, 'room_load_complete', this.spawnUser.bind(this) )
 
       // extract src value
       let el = document.createElement("div")
       el.innerHTML = sourcecode
       let link = el.querySelector("link[as=spatial-entrypoint]")
+      if( !link ) return
       let title = el.querySelector("title")
       let href = link.getAttribute("href")
       if( !href ) return
-      // override microformat xr fragment
-      if( href.match(/#/) ) room.urlhash = href.replace(/.*#/,'')
-
+      // if microformat has xr fragment in URI, use it if room-url has no xr fragment 
+      if( href.match(/#/) && !room.urlhash ) room.urlhash = href.replace(/.*#/,'')
+      // setup events
+      this.setupEvents()
       // return JML
-      let jml = `
-      <title>${ title ? title.innerText.replace(/\n.*/g,'') : baseurl.split("/").pop() }</title>
-      <FireBoxRoom>
-          <Assets>
-            <assetobject id="scene" src="${href}"/>
-          </Assets>
-          <Room>
-            <object pos="0 0 0" collision_id="scene" id="scene" />
-          </Room>
-       </FireBoxRoom>`
-        console.log(jml)
-      let source = room.parseSource(jml)
-
- //     setTimeout( this.spawnUser, 1000 ) // *FIXME* trigger after load scene
-      return source
+      return room.parseSource(`
+        <title>${ title ? title.innerText.replace(/\n.*/g,'') : baseurl.split("/").pop() }</title>
+        <FireBoxRoom>
+            <Assets>
+              <assetobject id="scene" src="${href}"/>
+            </Assets>
+            <Room>
+              <object pos="0 0 0" collision_id="scene" id="scene" />
+            </Room>
+        </FireBoxRoom>
+      `)
     }
     // microformat heuristic (https://xrfragment.org/#XRF%20microformat)
     // example: <link rel="alternate" as="spatial-entrypoint" src="https://foo.org/bar.glb"> 
