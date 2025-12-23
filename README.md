@@ -230,6 +230,18 @@ Platforms using JanusXR + JanusWeb:
 | <img src="https://imgur.com/JMYi81Z.png"/><br><br> | [vesta.janusxr.org](https://vesta.janusxr.org) | |
 | <img src="https://codeberg.org/coderofsalvation/xrforge/media/branch/master/xrforge.jpg"/><br><br> | [xrforge.isvery.ninja](https://xrforge.isvery.ninja) | [codeberg.org](https://codeberg.org/coderofsalvation/xrforge)
 
+Example JanusXR clusters
+
+| URL | health | view online |
+|--------|--------|---------|
+| vesta.janusxr.org | ✅ | [janusweb link](https://web.janusxr.org/#janus.url=http%3A%2F%2Fvesta.janusxr.org) |
+| nazrin.net/Hub | ✅ | [janusweb link](https://web.janusxr.org/#janus.url=https%3A%2F%2Fnazrin.net%2FHub) | 
+| gathervr.com | ❤️‍🩹 | [janusweb link](https://web.janusxr.org/#janus.url=https%3A%2F%2Fwww.gathervr.com) |
+| t3chnoshaman.com | 🪦 | [video](https://www.youtube.com/watch?v=1qt_AJ-Jl68) |
+| minervavr.com | 🪦 | [video](https://www.youtube.com/watch?v=DR_oqfxliSI) |
+
+> To get a sense of various JanusXR clusters, check the visualisations and/or check some videos from [VR dudes](https://www.youtube.com/@Thevrdudes)
+
 Visualisations of hyperlinked Janus clusters across the web:
 * [augmentedperception.com](https://augmentedperception.com) 
 * [panopticon](https://panopticon.spyduck.net/) 
