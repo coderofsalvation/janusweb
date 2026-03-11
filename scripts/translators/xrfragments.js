@@ -36,11 +36,12 @@ elation.require([], function() {
       // https://xrfragment.org/#teleport%20camera
       if( ! this.room.urlhash ) this.room.urlhash = 'spawn'
       this.room.setPlayerPosition.apply(this.room)
-      console.log("[xrfragment] camera teleport")
     }
 
     this.setupEvents = function(){
-      elation.events.add(room._room, 'room_load_complete', this.spawnUserAtFragment.bind(this) )
+      elation.events.add(room._room, 'room_load_complete', () => {
+        this.spawnUserAtFragment.bind(this) 
+      })
     }
 
     // translate XR Fragments microformat into JML
@@ -79,7 +80,7 @@ elation.require([], function() {
               <assetobject id="scene" src="${hrefNoHash}"/>
             </Assets>
             <Room>
-              <object pos="0 0 0" collision_id="scene" id="scene" />
+              <object pos="0 0 0" collision_id="scene" id="scene" js_id="scene" />
             </Room>
         </FireBoxRoom>
       `)

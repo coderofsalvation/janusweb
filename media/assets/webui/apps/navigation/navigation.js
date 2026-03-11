@@ -11,7 +11,7 @@ elation.elements.define('janus.ui.navigation', class extends elation.elements.ui
     this.statusindicator = this.getElementsByTagName('janus-ui-statusindicator')[0];
     this.notifications = this.getElementsByTagName('janus-ui-notifications')[0];
 
-    elation.events.add(this.janusweb, 'room_change', (ev) => this.updateCurrentURL());
+    elation.events.add(null, 'room_change', (ev) => this.updateCurrentURL());
   }
   getClient() {
     var node = this;
@@ -312,7 +312,7 @@ elation.elements.define('janus.ui.urlbar', class extends elation.elements.ui.pan
     });
     this.input = elation.elements.create('ui.input', {
       append: this,
-      value: (this.janusweb.currentroom ? this.janusweb.currentroom.url : '')
+      value: (this.janusweb.currentroom ? `${this.janusweb.currentroom.url}${this.janusweb.currentroom.urlhash?'#'+this.janusweb.currentroom.urlhash:''}` : '')
     });
     elation.events.add(this.input, 'input', (ev) => this.handleInput(ev));
     elation.events.add(this.input, 'focus', (ev) => this.handleFocus(ev));
@@ -328,7 +328,7 @@ elation.elements.define('janus.ui.urlbar', class extends elation.elements.ui.pan
       value: (this.janusweb.currentroom ? this.janusweb.currentroom.url : document.location.href)
     });
 */
-    elation.events.add(this.janusweb, 'room_change', this.updateRoom);
+    elation.events.add(null, 'room_change', this.updateRoom);
     this.updateRoom();
   }
   getClient() {
@@ -354,7 +354,7 @@ elation.elements.define('janus.ui.urlbar', class extends elation.elements.ui.pan
     var room = this.janusweb.currentroom;
     if (room) {
       this.titlelabel.innerHTML = room.title;
-      this.input.value = room.url;
+      this.input.value = `${room.url}${room.urlhash?'#'+room.urlhash:''}`
     }
   }
   addToRecents(room) {
@@ -362,7 +362,7 @@ elation.elements.define('janus.ui.urlbar', class extends elation.elements.ui.pan
     if (room) {
       var roomdata = {
         title: room.title,
-        url: room.url,
+        url: `${room.url}${room.urlhash?'#'+room.urlhash:''}`,
         time: new Date().getTime() / 1000,
         // TODO - we should take a snapshot of this room and store it along with this data
         //thumbnail: ''

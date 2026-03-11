@@ -258,6 +258,7 @@ elation.require([
       player.properties.runstrength = 80 * this.properties.run_speed;
       player.cursor_visible = (!janus.hmd ? elation.utils.any(this.cursor_visible, true) : false);
       player.cursor_opacity = elation.utils.any(this.cursor_opacity, .8);
+      if( player.shroud ) player.shroud.show()
       // FIXME - for some reason the above call sometimes orients the player backwards.  Doing it on a delay fixes it...
       //setTimeout(elation.bind(player, player.reset_position), 0);
     }
@@ -266,10 +267,14 @@ elation.require([
       if (document.location.origin + document.location.pathname == this.url) {
         document.location.hash = hash;
       }
+      this.updateSpawnpoint()
+    }
+    this.updateSpawnpoint = function(){
       let spawnpoint = this.getSpawnpoint();
       if (typeof player != 'undefined') {
         player.startposition.copy(spawnpoint.position);
         player.startorientation.copy(spawnpoint.orientation);
+        this.setPlayerPosition(spawnpoint.position, spawnpoint.orientation)
       }
     }
     this.getSpawnpoint = function(referrer) {
@@ -283,7 +288,22 @@ elation.require([
         spawnpoint.position.x += Math.sin(angle) * dist;
         spawnpoint.position.z += Math.cos(angle) * dist;
       }
-      if (referrer) {
+
+      if (this.urlhash) {
+        // XR Fragments deeplink spec (Level1: URL) https://xrfragment.org/#teleport%20camera
+        let obj = this.getObjectById(this.urlhash) || this.getObjectByDeepName(this.urlhash)
+        if (obj) {
+          obj.localToWorld(spawnpoint.position.set(0,0,0));
+          spawnpoint.orientation.setFromRotationMatrix(
+            obj.objects['3d'].matrixWorld.lookAt( 
+              spawnpoint.position, 
+              obj.localToWorld(V(0,0,-1)), 
+              obj.localToWorld( V(0,1,0).sub(spawnpoint.position) )
+            )
+          );
+        }else {
+        }
+      } else if (referrer) {
         let links = this.getObjectsByTagName('link');
         for (let i = 0; i < links.length; i++) {
           if (links[i].url == referrer) {
@@ -300,13 +320,6 @@ elation.require([
             spawnpoint.orientation.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0))); // Flip 180 degrees from portal orientation
             break;
           }
-        }
-      } else if (this.urlhash) {
-        // XR Fragments deeplink spec (Level1: URL) https://xrfragment.org/#teleport%20camera
-        let obj = this.getObjectById(this.urlhash) || this.getObjectByDeepName(this.urlhash)
-        if (obj) {
-          obj.localToWorld(spawnpoint.position.set(0,0,0));
-          spawnpoint.orientation.setFromRotationMatrix(obj.objects['3d'].matrixWorld.lookAt(spawnpoint.position, obj.localToWorld(V(0,0,-1)), obj.localToWorld(V(0,1,0).sub(spawnpoint.position))));
         }
       }
       return spawnpoint;
@@ -1037,6 +1050,9 @@ elation.require([
           this.properties.onload = room.onload;
           this.addEventListenerProxy('room_load_complete', (ev) => { let func = new Function(room.onload); func();});
         }
+          
+        // allow getSpawnpoint() to get (XR Fragment .urlhash) location from within loaded objects
+        this.addEventListenerProxy('room_load_complete', (ev) => this.updateSpawnpoint() ) 
 
         if (assets.scripts) {
           this.pendingScripts = 0;

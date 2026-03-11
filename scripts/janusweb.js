@@ -1,6 +1,6 @@
 elation.require([
   'janusweb.config', 'engine.things.generic','janusweb.remoteplayer', 'janusweb.room', 'janusweb.tracking', 'janusweb.multiplayermanager', 'janusweb.external.JanusFireboxParser', 'utils.proxy',
-  'janusweb.elements.raycaster', 'janusweb.elements.teleporter', 'janusweb.elements.linesegments', 'janusweb.elements.outliner'], function() {
+  'janusweb.elements.raycaster', 'janusweb.elements.teleporter', 'janusweb.elements.linesegments', 'janusweb.elements.outliner','janusweb.external.THREEPortals'], function() {
 
   elation.requireCSS('janusweb.janusweb');
   elation.component.add('engine.things.janusweb', function() {
@@ -347,7 +347,7 @@ elation.require([
     }
     this.setActiveRoom = function(url, referrer, skipURLUpdate) {
       var oldroom = this.currentroom;
-
+      let hash    = url.match('#') ? url.replace(/.*#/,'') : ''
       var room = false;
       this.loading = true;
 
@@ -410,6 +410,11 @@ elation.require([
         } else {
           this.currentroom.enable();
           this.currentroom.setTitle(this.currentroom.title);
+        }
+
+        if( hash != room.urlhash ){
+          this.currentroom.urlhash = hash
+          this.currentroom.updateSpawnpoint()
         }
         //this.enter_room(url);
       } else {

@@ -1,4 +1,4 @@
-elation.require(['janusweb.janusbase', 'janusweb.websurface'], function() {
+elation.require(['janusweb.janusbase', 'janusweb.websurface','janusweb.hyperlink'], function() {
   elation.component.add('engine.things.janusobject', function() {
     this.sidemap = {
       'back': THREE.FrontSide,
@@ -98,7 +98,6 @@ elation.require(['janusweb.janusbase', 'janusweb.websurface'], function() {
       if (this.anim_id) {
         this.setAnimation(this.anim_id);
       }
-
     }
     this.createObject3D = function() {
       if (this.properties.exists === false) return;
@@ -143,7 +142,6 @@ elation.require(['janusweb.janusbase', 'janusweb.websurface'], function() {
         object = new THREE.Object3D();
       }
       if (this.renderorder) object.renderOrder = this.renderorder;
-
       return object;
     }
     this.createChildren = function() {
@@ -192,6 +190,7 @@ elation.require(['janusweb.janusbase', 'janusweb.websurface'], function() {
           this.dispatchEvent({type: 'load'});
         }), 0);
         this.jsparts.updateParts();
+        this.hyperlink = new elation.janusweb.hyperlink(this);
         this.assetloaded = true;
         if (this.modelasset) {
           this.initAnimations(this.modelasset.animations);

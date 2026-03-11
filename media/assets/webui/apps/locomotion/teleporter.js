@@ -81,20 +81,6 @@ janus.registerElement('locomotion_teleporter', {
       pickable: false,
       loop: true
     });
-    this.shroud = this.createObject('object', {
-      id: 'sphere',
-      scale: V(2),
-      lighting: false,
-      col: 'black',
-      cull_face: 'none',
-      depth_test: false,
-      depth_write: false,
-      shadow_cast: false,
-      shadow_receive: false,
-      renderorder: 1000,
-      visible: false,
-    });
-
     let linepositions = [];
     for (let i = 0; i < this.linesegments; i++) {
       linepositions.push(V(0));
@@ -107,7 +93,6 @@ janus.registerElement('locomotion_teleporter', {
       col: 'blue',
       visible: false,
     });
-    player.head.add(this.shroud._target);
     this.particles.particle_vel = V(-.4, 0, -.4); // FIXME - particle velocity isn't being set on spawn
 
     let locomotion = janus.ui.apps.default.apps.locomotion;
@@ -221,18 +206,7 @@ janus.registerElement('locomotion_teleporter', {
       this.laser.updateLine();
       if (this.laser.room !== room._target) room.appendChild(this.laser);
       this.pointer.orientation._target.setFromEuler(new THREE.Euler(Math.PI/2, this.teleportangle, 0, "YXZ"));
-    } else {
-      if (this.shroud.visible) {
-        ////this.worldToLocal(player.head.localToWorld(this.shroud.pos.set(0,0,0)));
-        if (this.shroud.opacity > .001) {
-          this.shroud.opacity *= .9;
-          if (this.shroud.opacity <= .001) {
-            this.shroud.visible = false;
-            this.shroud.opacity = 0;
-          }
-        }
-      }
-    }
+    } 
   },
   handleRoomChange(ev) {
     this.setRoom(room);
@@ -268,7 +242,7 @@ janus.registerElement('locomotion_teleporter', {
   },
   handleTeleportTurn(ev) {
     if (!this.teleportactive) {
-      this.showShroud();
+      player.shroud.show()
       let turn = new THREE.Quaternion();
       turn.setFromEuler(new THREE.Euler(0, Math.PI / 4 * (ev.value > 0 ? -1 : 1), 0));
       player.orientation.multiply(turn);
@@ -386,10 +360,6 @@ janus.registerElement('locomotion_teleporter', {
     this.active = false;
     this.particles.stop();
     this.cancelLongPress()
-  },
-  showShroud() {
-    this.shroud.visible = true;
-    this.shroud.opacity = 1;
   },
   cancelLongPress(){
     clearTimeout(this.longpresstimer);

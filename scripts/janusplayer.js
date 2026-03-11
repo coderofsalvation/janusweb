@@ -165,7 +165,6 @@ document.body.dispatchEvent(click);
       this.cursor.renderOrder = 500;
       this.engine.systems.world.scene['world-3d'].add(this.cursor);
 
-
       this.getAvatarData().then(avatar => {;
         if (avatar && false) { // FIXME - self avatar is buggy so it's disabled
 /*
@@ -330,6 +329,7 @@ document.body.dispatchEvent(click);
         let animid = this.getAnimationID();
         this.ghost.body.anim_id = animid;
       }
+      if( this.shroud ) this.shroud.update() // fadeout black sphere after teleporting
     }
     this.updateCursor = (function() {
       var _tmpvec = new THREE.Vector3();
@@ -539,6 +539,7 @@ document.body.dispatchEvent(click);
 
       //room.add(this);
       this.updateGravity();
+      this.initShroud()
     }
     this.updateGravity = function(gravity) {
       // FIXME - gravity is currently disabled, pending ongoing work with mesh colliders
@@ -1358,5 +1359,40 @@ document.body.dispatchEvent(click);
       }
       return false;
     }
+    this.initShroud = function(){
+      // black sphere to fadeout after teleporting (used by scripts/hyperlinks.js and teleporter.js)
+      this.shroud = this.createObject('object', {
+        id: 'sphere',
+        scale: V(2),
+        lighting: false,
+        col: 'black',
+        cull_face: 'none',
+        depth_test: false,
+        depth_write: false,
+        shadow_cast: false,
+        shadow_receive: false,
+        renderorder: 1000,
+        visible: false
+      });
+      this.head.add(this.shroud._target);
+
+      this.shroud.update = () => {
+        if (this.shroud.visible) {
+          ////this.worldToLocal(player.head.localToWorld(this.shroud.pos.set(0,0,0)));
+          if (this.shroud.opacity > .001) {
+            this.shroud.opacity *= .95;
+            if (this.shroud.opacity <= .001) {
+              this.shroud.visible = false;
+              this.shroud.opacity = 0;
+            }
+          }
+        }
+      }
+      this.shroud.show = () => {
+        this.shroud.visible = true;
+        this.shroud.opacity = 1;
+      }
+    }
+
   }, elation.engine.things.player);
 });

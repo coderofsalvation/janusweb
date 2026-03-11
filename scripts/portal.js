@@ -354,7 +354,24 @@ elation.require(['janusweb.janusbase'], function() {
         scene.add(this.portalroom.objects['3d']);
         this.scene = scene;
         this.scene.updateMatrixWorld(true);
-        this.portal = new THREE.Portal({scene: scene, target: this.portalroom.spawnpoint});
+        //this.portal = new THREE.Portal({scene: scene, target: this.portalroom.spawnpoint});
+
+       // this.portal = new THREE.PortalController({
+       //   camera: this.engine.client.player.camera.camera,
+       //   renderer: this.engine.systems.render.renderer
+       // });
+       // this.portal.registerScene('scene-1', scene);
+       // this.portal.clock = new THREE.Clock();
+       // this.portal.p1 = this.portal.createPortal(20, 20, 'scene-1');
+       // this.portal.p1.position.copy(this.position)
+       // this.portal.setCurrentScene('scene-1');
+       // // ps. portals dont have to be bi-directional
+       // //this.portal.p1.setDestinationPortal( otherportal )
+       // this.portal.updateFrame = () => {
+       //   this.portal.update( this.portal.clock.getDelta() );
+       // }
+       // elation.events.add(this.engine.systems.render.views.main, 'render_view_prerender', elation.bind(this.portal, this.portal.updateFrame));
+
 
         elation.events.add(this.portalroom, 'room_load_processed', elation.bind(this, function(ev) {
           console.log('processed!', ev, this.portalroom.spawnpoint);

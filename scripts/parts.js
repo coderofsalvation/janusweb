@@ -26,25 +26,13 @@ elation.require([], function() {
       let name = object.name || object.uuid;
       if (!this._proxies[name]) {
         var rootobject = this._object._target || this._object;
-//console.log('replace the part', name, part.rotation, part.parent, part);
-        let newpart = this._parts[name] = elation.engine.things.janusobject({
-          type: 'janusobject',
-          id: rootobject.id + '_parts_' + name,
-          name: name,
-          contaner: elation.html.create(),
-          engine: this._object.engine,
-          properties: {
-            object: object,
-            parent: this._object,
-            rotation: [object.rotation.x * THREE.MathUtils.RAD2DEG, object.rotation.y * THREE.MathUtils.RAD2DEG, object.rotation.z * THREE.MathUtils.RAD2DEG], 
-            room: rootobject.room
-          }
-        });
-        if (this._object.colliders && newpart.colliders) {
-          this._object.colliders.add(newpart.colliders);
-        }
+        let newpart = this._parts[name] = this._object.createObject("object",{
+          js_id: name
+        })
+        newpart.add(object)
+
         // TODO - set up object hierarchy here
-        this._proxies[name] = this._parts[name].getProxyObject();
+        this._proxies[name] = newpart
         this._proxies[name].start();
       }
       return this._proxies[name];
@@ -61,4 +49,3 @@ elation.require([], function() {
     }
   })
 });
-
