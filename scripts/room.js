@@ -613,6 +613,7 @@ elation.require([
       elation.events.fire({element: this, type: 'room_load_queued'});
 
       var translator = this.getTranslator(url);
+    debugger
 
       /*
       // Disabled - using outerHTML to get the source is a nice way to avoid an extra network trip,
