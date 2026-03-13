@@ -7,14 +7,13 @@ elation.require([
   ], function() {
   let roomTranslators = false;
   function initRoomTranslators(room) {
-    roomTranslators = {
+    room.translators = roomTranslators = {
       '^janus-vfs:': elation.janusweb.translators.janusvfs({janus: janus}),
       '^about:blank$': elation.janusweb.translators.blank({janus: janus}),
       '^bookmarks$': elation.janusweb.translators.bookmarks({janus: janus}),
       '^dat:': elation.janusweb.translators.dat({janus: janus}),
       '^https?:\/\/(www\.)?reddit.com': elation.janusweb.translators.reddit({janus: janus}),
       '^error$': elation.janusweb.translators.error({janus: janus}),
-      '.*\.(gltf|glb|dae)$': elation.janusweb.translators.xrfragments({janus: janus}),
       '^default$': elation.janusweb.translators.default({janus: janus})
     }
   }

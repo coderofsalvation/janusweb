@@ -91,3 +91,7 @@ elation.require([], function() {
   });
 });
 
+elation.events.add(null, 'room_load_complete', function(e){
+  room.translators['.*\.(gltf|glb|dae)$'] = elation.janusweb.translators.xrfragments({janus: janus})
+  alert("installed!")
+})

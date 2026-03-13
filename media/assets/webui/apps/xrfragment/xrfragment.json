@@ -1,0 +1,8 @@
+{
+  "templates": {
+  },
+  "scripts":  ["./hyperlink.js","./translator.js"],
+  "css":      []
+}
+
+
