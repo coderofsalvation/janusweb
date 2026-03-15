@@ -14,6 +14,7 @@ elation.require([
       '^dat:': elation.janusweb.translators.dat({janus: janus}),
       '^https?:\/\/(www\.)?reddit.com': elation.janusweb.translators.reddit({janus: janus}),
       '^error$': elation.janusweb.translators.error({janus: janus}),
+      '.*\.(gltf|glb|dae)$': elation.janusweb.translators.xrfragments({janus: janus}),
       '^default$': elation.janusweb.translators.default({janus: janus})
     }
   }
@@ -302,11 +303,16 @@ elation.require([
         }
       } else if (this.urlhash) {
         // XR Fragments deeplink spec (Level1: URL) https://xrfragment.org/#teleport%20camera
-        let obj = this.getObjectById(this.urlhash) || this.getObjectByDeepName(this.urlhash)
-        if (obj) {
-          obj.localToWorld(spawnpoint.position.set(0,0,0));
-          spawnpoint.orientation.setFromRotationMatrix(obj.objects['3d'].matrixWorld.lookAt(spawnpoint.position, obj.localToWorld(V(0,0,-1)), obj.localToWorld(V(0,1,0).sub(spawnpoint.position))));
-        }
+        // backwards-compat: pos-names are deprecated
+        let obj
+        new URLSearchParams( this.urlhash.replace(/pos=/,'') ).forEach( (v,name) => {
+          let obj = this.getObjectById(name) || this.getObjectByDeepName(name)
+          if (obj) {
+            obj.localToWorld(spawnpoint.position.set(0,0,0));
+            spawnpoint.orientation.setFromRotationMatrix(obj.objects['3d'].matrixWorld.lookAt(spawnpoint.position, obj.localToWorld(V(0,0,-1)), obj.localToWorld(V(0,1,0).sub(spawnpoint.position))));
+          }
+        })
+        if( obj ) elation.events.fire({element: this, type: 'href', data: {href,opts}});
       }
       return spawnpoint;
     }

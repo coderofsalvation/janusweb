@@ -15,6 +15,10 @@ elation.require([], function() {
       this.scene = elation.engine.instances.default.systems.world.scene['world-3d'] 
       this._object = object
       this.detectHrefs( this.scene )
+      this.setupShroud()
+    }
+
+    setupShroud(){
       // show shroud when teleporting
       this.shroud = room.createObject('object', {
         id: 'sphere',
@@ -30,23 +34,31 @@ elation.require([], function() {
         visible: false,
       });
       player.head.add(this.shroud._target); 
+
+      // patch setPlayerPosition() with shroud animations during local teleports
+      room.setPlayerPosition = (
+        (original) => function(room){
+          this.hyperlink.showShroud()
+          return original.apply(this,room)
+        }.bind(room)
+      )(room.setPlayerPosition)
     }
 
-    detectHrefs = function(scene){
+    detectHrefs(scene){
       scene.traverse( (object) => {
         if( !object?.userData?.href || object.hasHref ) return
 
         const jobj = this.toJanusObject(object)
         jobj.addEventListener("click", () => this.execute(object.userData.href,{jobj,scene}) )
         object.hasHref = true
-        console.log(object.name)
+        //console.log('xrfragmgent: detect href in '+object.name)
       })
     }
 
     execute = function(href,opts){
       const {url,hash} = this.getUrlObject(href)
       console.log("hyperlink: "+href)
-      elation.events.fire({element: this, type: 'xrfragment_href', data: {href,opts});
+      elation.events.fire({element: this, type: 'href', data: {href,opts}});
       hash.forEach( (v,k) => {
         const {operator,param} = this.getOperators(k)
         switch( param ){
@@ -56,10 +68,7 @@ elation.require([], function() {
           default:     // level2: internal teleports/spawn
                        // https://xrfragment.org/#%F0%9F%93%9C%20level2%3A%20explicit%20hyperlinks   
                        room.urlhash = v
-                       if( this.scene.getObjectByName(v) ){
-                         room.setPlayerPosition()
-                         this.showShroud()
-                       }
+                       if( this.scene.getObjectByName(v) ) room.setPlayerPosition()
                        // level2: animation triggers 
                        // https://xrfragment.org/#%F0%9F%93%9C%20level2%3A%20explicit%20hyperlinks   
                        for( let i in this._object.children ){
@@ -128,7 +137,7 @@ elation.require([], function() {
     }
 
     update = function(){
-      if (this.shroud.visible) {
+      if (this.shroud?.visible) {
         if (this.shroud.opacity > .001) {
           this.shroud.opacity *= .9;
           if (this.shroud.opacity <= .001) {
@@ -142,10 +151,15 @@ elation.require([], function() {
   })
 });
 
+(
+  xrf_install_hyperlinks = function(){
+   if( !room.hyperlink ){ 
+     room.hyperlink = new elation.janusweb.hyperlink(room);
+   }
+ }
+)()
 
-elation.events.add(null, 'room_load_complete', function(e){
-  room.hyperlink = new elation.janusweb.hyperlink(room);
-})
+elation.events.add(null, 'room_load_complete', xrf_install_hyperlinks )
 elation.events.add(null, 'janusweb_script_frame', function(){
   if( room?.hyperlink ) room.hyperlink.update()
 })

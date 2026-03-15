@@ -1,7 +1,7 @@
 {
   "templates": {
   },
-  "scripts":  ["./hyperlink.js","./translator.js"],
+  "scripts":  ["./hyperlink.js","./xrfragment.js"],
   "css":      []
 }
 
