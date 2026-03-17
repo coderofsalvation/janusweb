@@ -2,45 +2,29 @@
 // There are cases where the 3D scene file might want to hint the 
 // specific features to the viewer-engine (JANUSWEB, THREE.js, AFRAME, Godot e.g.). 
 
-xrf_init_engines = function(){
+xrf_engines = function(){
 
-  const {toJanusObject} = xrf_lib
+  const {toJanusObject} = xrf_engines
 
-  const map = (obj,key,janusKey) => {
-    console.log(`xrfragment: engine-prefix '${key}' => '${janusKey}' = '${obj.userData[key]}'`)
+  const map = (obj,key,realKey) => {
+    let match = true 
 
+    // special cases
     switch( key ){
+      case "-three-material.blending": if( obj.material ){
+                                         const modes = {
+                                           'THREE.NoBlending':          THREE.NoBlending,
+                                           'THREE.NormalBlending':      THREE.NormalBlending,
+                                           'THREE.AdditiveBlending':    THREE.AdditiveBlending,
+                                           'THREE.SubtractiveBlending': THREE.SubtractiveBlending,
+                                           'THREE.MultiplyBlending':    THREE.MultiplyBlending
+                                         }
+                                         if( modes[ obj.userData[key] ] ) obj.material.blending = modes[ obj.userData[key] ]
+                                       }
+                                       break;
 
-      // ROOM key:string
-      case "-JANUS-skybox":          
-      case "-JANUS-tonemapping_type":
-      case "-JANUS-fog_mode":        
-      case "-JANUS-fog_col":         room[janusKey] = obj.userData[key]; break;
 
-      // ROOM key:float
-      case "-JANUS-gravity":         
-      case "-JANUS-fog_density":     
-      case "-JANUS-fog_start":       
-      case "-JANUS-fog_end":         
-      case "-JANUS-near_dist":       
-      case "-JANUS-tonemapping_exposure":
-      case "-JANUS-far_dist":        
-      case "-JANUS-walkspeed":       
-      case "-JANUS-runspeed":        
-      case "-JANUS-jump_velocity":   
-      case "-JANUS-bloom":           room[janusKey]     = parseFloat(obj.userData[key]); break;
-
-      case "-JANUS-fog":             
-      case "-JANUS-defaultlights":   
-      case "-JANUS-shadows":         
-      case "-JANUS-flying":          
-      case "-JANUS-teleport":        
-      case "-JANUS-locked":          
-      case "-JANUS-col":             
-      case "-JANUS-sync":            
-      case "-JANUS-private":         room[janusKey]     = obj.userData[key] == 'false' ? true : false; break;
-
-      case "-JANUS-use_local_asset": room.use_local_asset = obj.userData[key]
+      case "-janus-use_local_asset": room.use_local_asset = obj.userData[key]
                                      room.localasset = room.createObject('object', {
                                        id: room.use_local_asset,
                                        collision_id: room.use_local_asset + '_collision',
@@ -55,14 +39,15 @@ xrf_init_engines = function(){
                                      });
                                      break;
       // DECLARATIVE entities
-      case "-JANUS-tag":             opts = {}
-                                     // todo map opts
-                                     room.createObject( obj[janusKey], opts )
+      case "-janus-tag":             let opts = { js_id: `${obj.name}_${obj.userData['-janus-tag']}` }
+                                     for( let i in obj.userData ){ 
+                                       opts[ i.replace(/-janus-/,'') ] = obj.userData[i]
+                                     }
+                                     const jo = room.createObject( opts.tag, opts )
+                                     obj.add( jo.objects['3d'] )
                                      break;
       // OBJECTS
-      case "-JANUS-billboard":       toJanusObject(obj)[janusKey] = obj.userData[key]; break;
-
-      case "-JANUS-collision_id":    const collision_id = obj.userData[key]
+      case "-janus-collision_id":    const collision_id = obj.userData[key]
                                     if( collision_id != obj.name ){
                                       console.warn(`xrfragment: ${obj.name}.collision_id can be '${obj.name}' only (for now)..skipping '${collision_id}'`)
                                     }else{
@@ -83,6 +68,32 @@ xrf_init_engines = function(){
                                       console.log(`xrfragment: setting collision_id = ${collision_id}`)
                                     }
                                     break;
+
+      default:                      match = false                     
+               
+                                    // JANUS fallthrough
+                                    if( key.match(/^-janus-/) ){
+                                      if( obj.name == 'Scene' || obj.parent.name == '' ){ // *TODO* more heuristics to determine scene
+                                        room[realKey] = obj.userData[key];
+                                      }else{
+                                        toJanusObject(obj)[realKey] = obj.userData[key]
+                                      }
+                                      match = true
+                                    }
+
+                                    // THREE fallthrough
+                                    if( key.match(/^-three-/) ){
+                                      if( key.match(/-material\./) ){
+                                        if( obj.material ) obj.material[ realKey.replace('material.','') ] = obj.userData[key];
+                                      }else{
+                                        obj[realKey] = obj.userData[key];
+                                      }
+                                      match = true
+                                    }
+    }
+
+    if( match ){
+      console.log(`xrfragment: engine prefix '${key}:${realKey}' = '${obj.userData[key]}'`)
     }
   }
 
@@ -92,12 +103,22 @@ xrf_init_engines = function(){
     for( let field in obj.userData ){
       if( obj.userData[field] ){ 
         try{
-          map(obj,field, field.replace(/^-(JANUS|THREE3|THREE)-/,'') )
+          map(obj,field, field.replace(/^-(janus|three)-/,'') )
         }catch(e){ console.error(e) }
       }
     }
   })
 }
 
-elation.events.add(null, 'room_load_complete', xrf_init_engines ) // future scenes
-xrf_init_engines()                                                // current scene
+
+xrf_engines.toJanusObject = function(obj,opts){
+  opts = opts || {}
+  opts.tag = opts.tag || 'object'
+  const create = () => room.createObject( opts.tag,{ js_id: obj.name, ...opts })
+  let jo = room.objects[ obj.name] || create()
+  jo.objects['3d'] = obj
+  return jo
+}
+
+elation.events.add(null, 'room_load_complete', xrf_engines ) // future scenes
+xrf_engines()                                                // current scene
