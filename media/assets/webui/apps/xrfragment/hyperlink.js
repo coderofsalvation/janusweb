@@ -159,7 +159,7 @@ elation.require([], function() {
  }
 )()
 
-elation.events.add(null, 'room_load_complete', xrf_install_hyperlinks )
+elation.events.add(null, 'xrf_init', xrf_install_hyperlinks ) // fired by xrfragment.js
 elation.events.add(null, 'janusweb_script_frame', function(){
   if( room?.hyperlink ) room.hyperlink.update()
 })

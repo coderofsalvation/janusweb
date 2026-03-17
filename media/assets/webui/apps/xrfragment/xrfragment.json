@@ -1,7 +1,11 @@
 {
   "templates": {
   },
-  "scripts":  ["./hyperlink.js","./xrfragment.js"],
+  "scripts":  [
+    "./hyperlink.js",
+    "./xrfragment.js",
+    "./engine-prefixes.js"
+  ],
   "css":      []
 }
 
