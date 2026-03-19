@@ -1,3 +1,87 @@
+xrf_export = {
+  node(e){
+    const {userData,n} = e.data
+    for( let k in userData ){
+      if( k.match(/^-(three)-/) || k == 'href' ){ // keep hrefs + THREE.js engine prefixes
+        n.userData[k] = userData[k]
+      }
+      if( k == 'thing' && String(userData[k].componentname).match('engine.things.janus') ){
+        const thing = userData[k]
+        switch( thing.componentname ){
+          case "engine.things.janusparagraph":
+          case "engine.things.janustext":
+          case "engine.things.janusportal":
+          case "engine.things.januswebsurface":
+          case "engine.things.janusroom":
+            if( thing.componentname != 'engine.things.janusroom' ){
+              n.name = `-janus-${thing.js_id}`
+              n.userData['-janus-tag'] = thing.componentname 
+                                              .replace('janusportal','januslink')
+                                              .replace('engine.things.janus','')
+            }
+            const attrs = xrf_export.getAttributes(thing)
+            for( let i in attrs ){ 
+              n.userData[`-janus-${i}`] = attrs[i]
+            }
+            break;
+        }
+      }
+    }
+  },
+  scene(e){
+    // https://xrfragment.org/#%F0%9F%93%9Clevel7%3A%20engine%20prefixes
+    e.data.scene.userData['-janus-source'] = room.getRoomSource()
+  },
+  getAttributes(thing){
+    let proxy = thing.getProxyObject(),
+        propdefs = thing._thingdef.properties,
+        proxydefs = proxy._proxydefs,
+        attrs = {};
+
+    // this code is almost a duplicate of elation's .summarizeXML() 
+    for (let k in proxydefs) {
+      let proxydef = proxydefs[k],
+        propdef = elation.utils.arrayget(propdefs, proxydef[1]);
+      if ( k != 'room' && k != 'tagName' && k != 'classList' && proxydef[0] == 'property' && propdef) {
+        let val = elation.utils.arrayget(thing.properties, proxydef[1]);
+        let defaultval = propdef.default;
+        if (val instanceof THREE.Vector2) {
+          if (defaultval instanceof THREE.Vector2) defaultval = defaultval.toArray();
+          if (!('default' in propdef) || ('default' in propdef && !(val.x == defaultval[0] && val.y == defaultval[1]))) {
+            attrs[k] = val.toArray().map(n => Math.round(n * 10000) / 10000).join(' ');
+          }
+        } else if (val instanceof THREE.Vector3) {
+          if (defaultval instanceof THREE.Vector3) defaultval = defaultval.toArray();
+          if (!('default' in propdef) || ('default' in propdef && !(val.x == defaultval[0] && val.y == defaultval[1] && val.z == defaultval[2]))) {
+            attrs[k] = val.toArray().map(n => Math.round(n * 10000) / 10000).join(' ');
+          }
+        } else if (val instanceof THREE.Color) {
+          if (defaultval instanceof THREE.Color) defaultval = defaultval.toArray();
+          if (!('default' in propdef) || defaultval === null || ('default' in propdef && !(val.r == defaultval[0] && val.g == defaultval[1] && val.b == defaultval[2]))) {
+            attrs[k] = val.toArray().map(n => Math.round(n * 10000) / 10000).join(' ');
+          }
+        } else if (val instanceof THREE.Euler) {
+          if (defaultval instanceof THREE.Euler) defaultval = defaultval.toArray();
+          if (!('default' in propdef) || ('default' in propdef && !(val.x == defaultval[0] && val.y == defaultval[1] && val.z == defaultval[2]))) {
+            attrs[k] = val.toArray().slice(0, 3).map(n => Math.round(n * 10000) / 10000).join(' ');
+          }
+        } else if (val instanceof THREE.Quaternion) {
+          if (defaultval instanceof THREE.Quaternion) defaultval = defaultval.toArray();
+          if (!('default' in propdef) || ('default' in propdef && !(val.x == defaultval[0] && val.y == defaultval[1] && val.z == defaultval[2] && val.w == defaultval[3]))) {
+            attrs[k] = val.toArray().map(n => Math.round(n * 10000) / 10000).join(' ');
+          }
+        } else if (val !== propdef.default && val !== null && val !== '') {
+          attrs[k] = val;
+        }
+      }
+    }            
+    return attrs;
+  }
+}
+
+elation.events.add(null, 'webui_editor_export_node', xrf_export.node )
+elation.events.add(null, 'webui_editor_export',      xrf_export.scene )
+
 // update urlbar when user or browser activates href 
 elation.events.add(null, 'href', function(e){
   const scene  = elation.engine.instances.default.systems.world.scene['world-3d'] 

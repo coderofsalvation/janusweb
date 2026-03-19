@@ -4,7 +4,8 @@
 
 xrf_engines = function(){
 
-  const {toJanusObject} = xrf_engines
+  const {toJanusObject,applyPrefixes} = xrf_engines
+  let remove = []
 
   const map = (obj,key,realKey) => {
     let match = true 
@@ -39,12 +40,14 @@ xrf_engines = function(){
                                      });
                                      break;
       // DECLARATIVE entities
-      case "-janus-tag":             let opts = { js_id: `${obj.name}_${obj.userData['-janus-tag']}` }
+      case "-janus-tag":             let opts = { js_id: `-janus-${obj.name}_${obj.userData['-janus-tag']}` }
                                      for( let i in obj.userData ){ 
                                        opts[ i.replace(/-janus-/,'') ] = obj.userData[i]
                                      }
                                      const jo = room.createObject( opts.tag, opts )
-                                     obj.add( jo.objects['3d'] )
+                                     remove.push(obj)                     
+                                     //jo.objects['3d'].name = opts.js_id
+                                     //obj.add( jo.objects['3d'] )
                                      break;
       // OBJECTS
       case "-janus-collision_id":    const collision_id = obj.userData[key]
@@ -73,7 +76,8 @@ xrf_engines = function(){
                
                                     // JANUS fallthrough
                                     if( key.match(/^-janus-/) ){
-                                      if( obj.name == 'Scene' || obj.parent.name == '' ){ // *TODO* more heuristics to determine scene
+                                      // *TODO* more heuristics to determine scene
+                                      if( obj.name == 'Scene' || obj.parent.name == '' || obj.userData['-janus-source']){ 
                                         room[realKey] = obj.userData[key];
                                       }else{
                                         toJanusObject(obj)[realKey] = obj.userData[key]
@@ -98,16 +102,13 @@ xrf_engines = function(){
   }
 
   room.gravity = 0 // new default
-  this.scene = elation.engine.instances.default.systems.world.scene['world-3d'] 
-  this.scene.traverse( (obj) => {
-    for( let field in obj.userData ){
-      if( obj.userData[field] ){ 
-        try{
-          map(obj,field, field.replace(/^-(janus|three)-/,'') )
-        }catch(e){ console.error(e) }
-      }
-    }
-  })
+  let scene = elation.engine.instances.default.systems.world.scene['world-3d'] 
+  applyPrefixes(scene,map)
+  const dispose = (o) => {
+    if( o.material ) o.material.dispose()
+    o.parent.remove(o)
+  }
+  remove.map( dispose )
 }
 
 
@@ -118,6 +119,18 @@ xrf_engines.toJanusObject = function(obj,opts){
   let jo = room.objects[ obj.name] || create()
   jo.objects['3d'] = obj
   return jo
+}
+
+xrf_engines.applyPrefixes = function(scene,map){
+  scene.traverse( (obj) => {
+    for( let field in obj.userData ){
+      if( obj.userData[field] ){ 
+        try{
+          map(obj,field, field.replace(/^-(janus|three)-/,'') )
+        }catch(e){ console.error(e) }
+      }
+    }
+  })
 }
 
 elation.events.add(null, 'room_load_complete', xrf_engines ) // future scenes
