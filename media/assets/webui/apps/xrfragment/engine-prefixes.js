@@ -5,7 +5,6 @@
 xrf_engines = function(){
 
   const {toJanusObject,applyPrefixes} = xrf_engines
-  let remove = []
 
   const map = (obj,key,realKey) => {
     let match = true 
@@ -24,7 +23,6 @@ xrf_engines = function(){
                                        }
                                        break;
 
-
       case "-janus-use_local_asset": room.use_local_asset = obj.userData[key]
                                      room.localasset = room.createObject('object', {
                                        id: room.use_local_asset,
@@ -40,44 +38,48 @@ xrf_engines = function(){
                                      });
                                      break;
       // DECLARATIVE entities
-      case "-janus-tag":             let opts = { js_id: `-janus-${obj.name}_${obj.userData['-janus-tag']}` }
+      case "-janus-tag":             
+
+                                     let opts    = {}
+                                     opts.js_id = String(`-janus-${obj.name}_${obj.userData['-janus-tag']}`).replace('janus--janus','')
                                      for( let i in obj.userData ){ 
                                        opts[ i.replace(/-janus-/,'') ] = obj.userData[i]
                                      }
                                      const jo = room.createObject( opts.tag, opts )
-                                     remove.push(obj)                     
-                                     //jo.objects['3d'].name = opts.js_id
-                                     //obj.add( jo.objects['3d'] )
+                                     jo.objects['3d'].name = opts.js_id
+                                     obj.getWorldPosition(jo.position)
+                                     jo.quaternion.copy( obj.quaternion )
+                                     obj.parent.remove(obj)
                                      break;
       // OBJECTS
       case "-janus-collision_id":    const collision_id = obj.userData[key]
-                                    if( collision_id != obj.name ){
-                                      console.warn(`xrfragment: ${obj.name}.collision_id can be '${obj.name}' only (for now)..skipping '${collision_id}'`)
-                                    }else{
-                                      const jo = toJanusObject(obj,{noreparent:true})
-                                      jo.collidable = true
-                                      jo.collision_id = collision_id
-                                      jo.removeCollider();
-                                      const collider = obj.clone()
-                                      collider.position.set(0,0,0)
-                                      collider.rotation.set(0,0,0)
-                                      collider.scale.set(1,1,1)
-                                      jo.collision_trigger = true
-                                      jo.setCollider('mesh',{mesh: collider})
-                                      jo.colliders.parent = obj
-                                      //jo.objects.dynamics.mass = 1
-                                      //jo.objects.dynamics.addForce('static', new THREE.Vector3(0, room.gravity, 0));
-                                      //elation.events.add(jo.objects.dynamics, 'physics_collide', elation.bind(jo, jo.handleCollision));
-                                      console.log(`xrfragment: setting collision_id = ${collision_id}`)
-                                    }
-                                    break;
+                                     if( collision_id != obj.name ){
+                                       console.warn(`xrfragment: ${obj.name}.collision_id can be '${obj.name}' only (for now)..skipping '${collision_id}'`)
+                                     }else{
+                                       const jo = toJanusObject(obj,{noreparent:true})
+                                       jo.collidable = true
+                                       jo.collision_id = collision_id
+                                       jo.removeCollider();
+                                       const collider = obj.clone()
+                                       collider.position.set(0,0,0)
+                                       collider.rotation.set(0,0,0)
+                                       collider.scale.set(1,1,1)
+                                       jo.collision_trigger = true
+                                       jo.setCollider('mesh',{mesh: collider})
+                                       jo.colliders.parent = obj
+                                       //jo.objects.dynamics.mass = 1
+                                       //jo.objects.dynamics.addForce('static', new THREE.Vector3(0, room.gravity, 0));
+                                       //elation.events.add(jo.objects.dynamics, 'physics_collide', elation.bind(jo, jo.handleCollision));
+                                       console.log(`xrfragment: setting collision_id = ${collision_id}`)
+                                     }
+                                     break;
 
       default:                      match = false                     
                
                                     // JANUS fallthrough
                                     if( key.match(/^-janus-/) ){
                                       // *TODO* more heuristics to determine scene
-                                      if( obj.name == 'Scene' || obj.parent.name == '' || obj.userData['-janus-source']){ 
+                                      if( obj.name == 'Scene' || obj?.parent?.name == '' || obj.userData['-janus-source']){ 
                                         room[realKey] = obj.userData[key];
                                       }else{
                                         toJanusObject(obj)[realKey] = obj.userData[key]
@@ -98,17 +100,13 @@ xrf_engines = function(){
 
     if( match ){
       console.log(`xrfragment: engine prefix '${key}:${realKey}' = '${obj.userData[key]}'`)
+      debugger
     }
   }
 
   room.gravity = 0 // new default
   let scene = elation.engine.instances.default.systems.world.scene['world-3d'] 
   applyPrefixes(scene,map)
-  const dispose = (o) => {
-    if( o.material ) o.material.dispose()
-    o.parent.remove(o)
-  }
-  remove.map( dispose )
 }
 
 

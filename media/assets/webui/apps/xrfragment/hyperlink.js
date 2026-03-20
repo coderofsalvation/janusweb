@@ -51,7 +51,7 @@ elation.require([], function() {
         const jobj = this.toJanusObject(object)
         jobj.addEventListener("click", () => this.execute(object.userData.href,{jobj,scene}) )
         object.hasHref = true
-        //console.log('xrfragmgent: detect href in '+object.name)
+        //console.log('xrfragment: detect href in '+object.name)
       })
     }
 
