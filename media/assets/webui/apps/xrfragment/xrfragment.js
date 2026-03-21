@@ -16,7 +16,7 @@ xrf_export = {
           case "engine.things.janusroom":
 
             if( thing.componentname != 'engine.things.janusroom' ){
-              n.name = `-janus-${thing.js_id}`
+              n.name = String(`-janus-${thing.js_id}`).replace(/.*janus-/,'-janus-')
               n.userData['-janus-tag'] = thing.componentname 
                                               .replace('janusportal','januslink')
                                               .replace('engine.things.janus','')
@@ -28,7 +28,9 @@ xrf_export = {
             // write XRF `-janus-*` engine prefixes
             const attrs = xrf_export.getAttributes(thing)
             for( let i in attrs ){ 
-              n.userData[`-janus-${i}`] = attrs[i]
+              if( !i.match(/^-janus-(use_local_asset)/) ){
+                n.userData[`-janus-${i}`] = attrs[i]
+              }
             }
             break;
         }

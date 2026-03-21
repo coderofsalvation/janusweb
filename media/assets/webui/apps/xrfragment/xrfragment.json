@@ -4,7 +4,8 @@
   "scripts":  [
     "./hyperlink.js",
     "./xrfragment.js",
-    "./engine-prefixes.js"
+    "./engine-prefixes.js",
+    "./sidecarfile.js"
   ],
   "css":      []
 }

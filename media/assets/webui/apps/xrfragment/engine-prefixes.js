@@ -4,7 +4,8 @@
 
 xrf_engines = function(){
 
-  const {toJanusObject,applyPrefixes} = xrf_engines
+  const {toJanusObject,applyPrefixes,applyCleanup} = xrf_engines
+  let cleanup = []
 
   const map = (obj,key,realKey) => {
     let match = true 
@@ -40,16 +41,27 @@ xrf_engines = function(){
       // DECLARATIVE entities
       case "-janus-tag":             
 
-                                     let opts    = {}
-                                     opts.js_id = String(`-janus-${obj.name}_${obj.userData['-janus-tag']}`).replace('janus--janus','')
+                                     let opts    = {}// rotation: '0 -180 0' }
+                                     opts.js_id = opts.name = opts.jsid = String(`-janus-${obj.name}_${obj.userData['-janus-tag']}`).replace(/.*janus-/,'-janus-')
                                      for( let i in obj.userData ){ 
                                        opts[ i.replace(/-janus-/,'') ] = obj.userData[i]
                                      }
                                      const jo = room.createObject( opts.tag, opts )
                                      jo.objects['3d'].name = opts.js_id
-                                     obj.getWorldPosition(jo.position)
-                                     jo.quaternion.copy( obj.quaternion )
-                                     obj.parent.remove(obj)
+                                     jo.visible = false
+                                      
+                                     // replace janusobject with nested THREE obj
+                                     // we need setTimeout otherwise quaternion is not updated 
+                                     // https://github.com/jbaicoianu/janusweb/issues/306
+                                     obj.parent.add( jo.objects['3d'] )
+                                     setTimeout( () => {
+                                       jo.orientation.copy( obj.quaternion)
+                                       jo.position.copy( obj.position )
+                                       jo.visible = true
+                                     },200)
+                                     // mark previously generated geo/materials by janusweb export for deletion
+                                     obj.traverse ( (o) => cleanup.push(o) )
+                                     cleanup.push(obj)
                                      break;
       // OBJECTS
       case "-janus-collision_id":    const collision_id = obj.userData[key]
@@ -100,13 +112,13 @@ xrf_engines = function(){
 
     if( match ){
       console.log(`xrfragment: engine prefix '${key}:${realKey}' = '${obj.userData[key]}'`)
-      debugger
     }
   }
 
-  room.gravity = 0 // new default
+  room.gravity = 0 // new default unless specified otherwise
   let scene = elation.engine.instances.default.systems.world.scene['world-3d'] 
   applyPrefixes(scene,map)
+  applyCleanup(cleanup)
 }
 
 
@@ -130,6 +142,16 @@ xrf_engines.applyPrefixes = function(scene,map){
     }
   })
 }
+
+xrf_engines.applyCleanup = function(cleanup){
+  const clean = (o) => {
+    if( o.geometry ) o.geometry.dispose()
+    if( o.material ) o.material.dispose()
+    o.removeFromParent()
+  }
+  cleanup.map(clean)
+}
+
 
 elation.events.add(null, 'room_load_complete', xrf_engines ) // future scenes
 xrf_engines()                                                // current scene

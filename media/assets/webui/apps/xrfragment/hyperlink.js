@@ -116,19 +116,20 @@ elation.require([], function() {
       // glTF animated collidable objects require special sync/setup: 
       // collider must be child of THREE object (to get animated), not janusobject
       // NOTE: avoid jobj.add() since that reparents the object (andw breaks glTF anims)
-      let jobj = this._object.createObject("object",{
+      let jo = this._object.createObject("object",{
         js_id: object.name
       })
-      jobj.objects['3d'] = object
-      jobj.collidable = true
-      jobj.removeCollider();
+      object.parent.add( jo.objects['3d'] )
+      jo.objects['3d'] = object
+      jo.collidable = true
+      jo.removeCollider();
       const collider = object.clone()
       collider.position.set(0,0,0)
       collider.rotation.set(0,0,0)
       collider.scale.set(1,1,1)
-      jobj.setCollider('mesh',{mesh: collider})
-      jobj.colliders.parent = object
-      return jobj
+      jo.setCollider('mesh',{mesh: collider})
+      jo.colliders.parent = object
+      return jo
     }
 
     showShroud = function(){
@@ -151,16 +152,15 @@ elation.require([], function() {
   })
 });
 
-(
-  xrf_install_hyperlinks = function(){
-   if( !room.hyperlink ){ 
-     room.hyperlink = new elation.janusweb.hyperlink(room);
-   }
+xrf_install_hyperlinks = function(){
+ if( !room.hyperlink ){ 
+   room.hyperlink = new elation.janusweb.hyperlink(room);
  }
-)()
+}
 
-elation.events.add(null, 'xrf_init', xrf_install_hyperlinks ) // fired by xrfragment.js
+elation.events.add(null, 'room_load_complete', xrf_install_hyperlinks ) 
 elation.events.add(null, 'janusweb_script_frame', function(){
   if( room?.hyperlink ) room.hyperlink.update()
 })
+xrf_install_hyperlinks()
 
