@@ -158,9 +158,23 @@ xrf_install_hyperlinks = function(){
  }
 }
 
+xrf_install_hyperlinks()
+
+// update urlbar when user or browser activates href 
+elation.events.add(null, 'href', function(e){
+  const scene  = elation.engine.instances.default.systems.world.scene['world-3d'] 
+  const urlbar = document.querySelector('janus-ui-urlbar ui-input')
+  const href   = e?.data?.href
+  if( urlbar ){
+    urlbar.value = href[0] == '#' ? urlbar.value.replace(/#.*/,'') + href : href
+  }else console.warn("xrfragment: cannot find urlbar")
+})
+
 elation.events.add(null, 'room_load_complete', xrf_install_hyperlinks ) 
 elation.events.add(null, 'janusweb_script_frame', function(){
   if( room?.hyperlink ) room.hyperlink.update()
 })
-xrf_install_hyperlinks()
 
+if( room.urlhash ){ 
+  elation.events.fire({element: this, type: 'href', data: {href: `#${room.urlhash}`}});
+}
