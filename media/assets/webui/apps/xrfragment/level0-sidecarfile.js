@@ -13,12 +13,18 @@ elation.require([], function() {
       this._object   = object
       this.extension = /\.(gltf|glb|dae)$/
       this.extensionXRF = /\.xrf\./ 
-      // https://xrfragment.org/#system%20folders
-      const hideSystemFolder = (o) => { if(o.name[0] == '_') o.visible = false }
 
-      if( room.url.match(this.extension) && this.isXRF(hideSystemFolder) ){
-        this.load()
+      if( room.url.match(this.extension) && this.isXRF(this.hideSystemFolder) ){
+        this.loadSound()  // https://xrfragment.org/#sidecar%20files
+        this.loadWebVTT() // https://xrfragment.org/#sidecar%20files
+        this.initStartButton()
+        this.initSubtitle()
       }
+    }
+
+    hideSystemFolder(o){
+      // https://xrfragment.org/#system%20folders
+      if(o.name[0] == '_') o.visible = false
     }
 
     isXRF(cb){
@@ -31,28 +37,75 @@ elation.require([], function() {
       return heuristic
     }
 
-    load(){ // https://xrfragment.org/#sidecar%20files
+    loadSound(){ // https://xrfragment.org/#sidecar%20files
       const audio     = room.url.replace(this.extension,'.ogg') 
-      const subtitles = room.url.replace(this.extension,'.vtt') 
       room.loadNewAsset("sound", {id:"xrf_audio", src:audio})
-      room.createObject('sound',{
-        id: "xrf_audio",
-        js_id: "xrf_audio",
-        loop:true,
-        autoplay: false,
-        pos: '0 0 0',
-        rect: "-100 -100 100 100"
-      })
-      fetch( subtitles )
+      this.sound = room.createObject('sound',{ id: "xrf_audio", js_id: 'xrf_audio' })
+    }
+
+    loadWebVTT(){ // https://xrfragment.org/#sidecar%20files
+      const webvtt = room.url.replace(this.extension,'.vtt') 
+      fetch( webvtt )
       .then( (res)  => res.text() ) 
       .then( (webvtt) => {
-        this.subtitles = this.parseVTT(webvtt) 
+        this.webvtt = this.parseWEBVTT(webvtt) 
       })
       .catch( () => false ) // no biggy (optional)
     }
 
+    initStartButton(){
+      this.btn = room.createObject('object',{
+        id: 'cube',
+        js_id: 'btnstart',
+        pos: '0.09 3.3 4',
+        scale: '2 0.5 0.2',
+        col: '0.33 0.33 0.33',
+        sync: true,
+        billboard: 'y',
+        collision_id: 'cube'
+      })
+      const label = this.btn.createObject('text',{
+        text: 'Start experience',
+        col: '1 1 1',
+        pos: '0 -0.15 0.5',
+        scale: '1.2 5 1.2',
+      })
+      this.btn.addEventListener('click', () => this.start() )
+    }
+
+    initSubtitle(){
+      this.subtitle = room.createObject('paragraph',{
+        js_id: 'subtitle',
+        pos: '0 0.5 0',
+        test: 'Lorem ipsum dolor sit amet',
+        css: `.paragraphcontainer{ 
+          background: transparent;
+          height:100%; 
+          width:100%; 
+          padding:50px; 
+          font-size:50px; 
+          display:block;  
+          color:black; 
+        }`,
+        text_col: '0.5 0.5 0.5',
+        back_col: '1 1 1'
+      })
+    }
+
+    start(){
+      this.sound.pos = '0 0 0'
+      this.sound.play()
+      this.btn.visible = false
+    }
+
+    update(){
+      if( this.sound?.playStarted && this.sound.audio?.context ){
+        let time = this.audio.context.currentTime
+      }
+    }
+
     // naive webvtt parser
-    parseVTT(text) {
+    parseWEBVTT(text) {
       const WEBVTT_HEADER = /^WEBVTT/i;
       const TIME_LINE     = /^([0-9:.]+)\s+-->\s+([0-9:.]+)(?:\s+(.+))?$/;
       const WHO  = /^<v ([^>]+)>/
@@ -70,8 +123,8 @@ elation.require([], function() {
         const timeMatch = lines[i].match(TIME_LINE);
         if (timeMatch) {
           const item = {
-            start: {str:timeMatch[1], ts: this.vttToMilliseconds(timeMatch[1]) },
-            stop:  {str:timeMatch[2], ts: this.vttToMilliseconds(timeMatch[2]) },
+            start: {str:timeMatch[1], ts: this.vttToSeconds(timeMatch[1]) },
+            stop:  {str:timeMatch[2], ts: this.vttToSeconds(timeMatch[2]) },
             who: false,
             text: ""
           };
@@ -93,16 +146,16 @@ elation.require([], function() {
       return result;
     }
 
-    vttToMilliseconds(vttString){
+    vttToSeconds(vttString){
       const parts = vttString.split(':');
       let hours = 0, minutes = 0, secondsWithMs;
       if (parts.length === 3) { [hours, minutes, secondsWithMs] = parts; }
       else { [minutes, secondsWithMs] = parts; } // Format is MM:SS.mmm
       const [seconds, milliseconds] = secondsWithMs.split('.');
       return (
-        (parseInt(hours) * 3600000) +
-        (parseInt(minutes) * 60000) +
-        (parseInt(seconds) * 1000) +
+        (parseInt(hours) * 3600) +
+        (parseInt(minutes) * 60) +
+        (parseInt(seconds) * 1) +
         parseInt(milliseconds || 0)
       );
     }
@@ -111,13 +164,13 @@ elation.require([], function() {
 });
 
 xrf_install_sidecarfiles = function(){
- if( !room.sidecarfile ){ 
-   room.sidecarfile = new elation.janusweb.sidecarfile(room);
- }
+  if( !room.sidecarfile ){ 
+    room.sidecarfile = new elation.janusweb.sidecarfile(room);
+  }
 }
 
 elation.events.add(null, 'room_load_complete', xrf_install_sidecarfiles )
-elation.events.add(null, 'sound_enabled', function(){
-  //room.objects.xrf_audio.play()
+elation.events.add(null, 'janusweb_script_frame', function(){
+  if( room?.sidecarfile ) room.sidecarfile.update()
 })
 xrf_install_sidecarfiles()
