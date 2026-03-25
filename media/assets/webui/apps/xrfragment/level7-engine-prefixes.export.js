@@ -40,6 +40,14 @@ xrf_export = {
   scene(e){
     // https://xrfragment.org/#%F0%9F%93%9Clevel7%3A%20engine%20prefixes
     e.data.scene.userData['-janus-source'] = room.getRoomSource()
+
+    let assetpack = []
+    room.assetpack.assets.map( (asset) => {
+      let a = { ...asset.assetpack.json[0] }
+      delete a.assetpack
+      assetpack.push( a )
+    })
+    a.data.scene.userData['-janus-assetpack'] = JSON.stringify(assetpack)
   },
   getAttributes(thing){
     let proxy = thing.getProxyObject(),

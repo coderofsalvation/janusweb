@@ -45,6 +45,31 @@ xrf_engines = function(){
                                        shadows: true
                                      });
                                      break;
+
+      case "-janus-assetlist":       {
+                                       try{
+                                         let assetlist = JSON.parse(obj.userData[key] )
+                                         assetlist.map( (a) => {
+                                           if( a.name ) a.id = a.name 
+                                           room.loadNewAsset(a.assettype, a) 
+                                           debugger
+                                         })
+                                         break;
+                                       }catch(e){ 
+                                         console.warn("-janus-assetlist invalid JSON") 
+                                         break;
+                                       }
+                                     }
+
+      // lazy initializers
+      case "-janus-shader_id": 
+      case "-janus-image_id": 
+      case "-janus-sound_id": 
+      case "-janus-video_id":        setTimeout( () => {
+                                       toJanusObject(obj)[realKey] = obj.userData[key]
+                                     },500)
+                                     break;
+
       // DECLARATIVE entities
       case "-janus-tag":             
 
