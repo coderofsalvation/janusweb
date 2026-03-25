@@ -14,14 +14,20 @@ elation.require([], function() {
     constructor(object) {
       this.scene = elation.engine.instances.default.systems.world.scene['world-3d'] 
       this._object = object
-      this.detectHrefs( this.scene )
+      this.scan( this.scene )
       this.setupShroud()
     }
 
     setupShroud(){
       // show shroud when teleporting
+      for( let i in player.head.children ){
+        let n = player.head.children[i]
+        if( n.js_id == 'xrf_shroud' ) this.shroud = n // found previrous one
+      }
+      if( this.shroud ) return // we're done!
       this.shroud = room.createObject('object', {
         id: 'sphere',
+        js_id: 'xrf_shroud',
         scale: V(1),
         lighting: false,
         col: 'black',
@@ -44,21 +50,37 @@ elation.require([], function() {
       )(room.setPlayerPosition)
     }
 
-    detectHrefs(scene){
+    scan(scene,cb){
       scene.traverse( (object) => {
-        if( !object?.userData?.href || object.hasHref ) return
-
-        const jobj = this.toJanusObject(object)
-        jobj.addEventListener("click", () => this.execute(object.userData.href,{jobj,scene}) )
-        object.hasHref = true
-        //console.log('xrfragment: detect href in '+object.name)
+        this.detectHUD(object)
+        this.detectHref(object)
       })
+    }
+
+    detectHref(object){
+      if( !object?.userData?.href || object.hasHref ) return
+
+      const jobj = this.toJanusObject(object)
+      jobj.addEventListener("click", () => this.execute(object.userData.href,{jobj,scene}) )
+      object.hasHref = true
+    }
+
+    detectHUD(object){
+      // XR Fragment HUD extensions: https://xrfragment.org/#teleport%20camera%20spawnpoint
+      if( object.type == 'PerspectiveCamera' && object.name == 'spawn' && object.children.length ){
+        const cam = player.camera.objects['3d'] 
+        // move children to player camera2
+        while( cam.children.length ) cam.remove( cam.children[0] )
+        while( object.children.length ) cam.add( object.children[0] )
+      }
     }
 
     execute = function(href,opts){
       const {url,hash} = this.getUrlObject(href)
+      opts = opts ? {...opts, url, hash} : {url,hash} 
       console.log("hyperlink: "+href)
       elation.events.fire({element: this, type: 'href', data: {href,opts}});
+      if( room.baseurl != (url.origin+url.pathname) ) return this.executeExternal(href,opts)
       hash.forEach( (v,k) => {
         const {operator,param} = this.getOperators(k)
         switch( param ){
@@ -67,7 +89,7 @@ elation.require([], function() {
           case "pos":  // legacy fallthrough
           default:     // level2: internal teleports/spawn
                        // https://xrfragment.org/#%F0%9F%93%9C%20level2%3A%20explicit%20hyperlinks   
-                       room.urlhash = v
+                       room.urlhash = v || k
                        if( this.scene.getObjectByName(v) ) room.setPlayerPosition()
                        // level2: animation triggers 
                        // https://xrfragment.org/#%F0%9F%93%9C%20level2%3A%20explicit%20hyperlinks   
@@ -93,6 +115,16 @@ elation.require([], function() {
         janus.updateClientURL(fullUrl)
       }
       elation.events.fire({element: room, type: 'room_change', data: room});
+    }
+
+    executeExternal(href, opts){
+      if( opts.portalActivateDelay ){
+        setTimeout( () => {
+          janus.setActiveRoom( href, room.url)
+        }, opts.portalActivateDelay)
+      }
+      player.spawnPortal(href)
+      elation.events.fire({element: this, type: 'href_portal', data: {href,opts}});
     }
 
     getUrlObject = function(href){
@@ -138,7 +170,7 @@ elation.require([], function() {
     }
 
     update = function(){
-      if (this.shroud?.visible) {
+      if (this.shroud?.visible && !janus.loading) {
         if (this.shroud.opacity > .001) {
           this.shroud.opacity *= .9;
           if (this.shroud.opacity <= .001) {
@@ -153,9 +185,10 @@ elation.require([], function() {
 });
 
 xrf_install_hyperlinks = function(){
- if( !room.hyperlink ){ 
-   room.hyperlink = new elation.janusweb.hyperlink(room);
- }
+  if( !room.hyperlink ){ 
+    room.hyperlink = new elation.janusweb.hyperlink(room);
+  }
+  janus.loading = false // force!
 }
 
 xrf_install_hyperlinks()

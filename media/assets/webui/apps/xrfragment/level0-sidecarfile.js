@@ -13,7 +13,11 @@ elation.require([], function() {
       this._object   = object
       this.extension = /\.(gltf|glb|dae)$/
       this.extensionXRF = /\.xrf\./ 
+      this.init()
+    }
 
+    init(){
+      this.cleanup()
       if( room.url.match(this.extension) && this.isXRF(this.hideSystemFolder) ){
         this.loadSound()  // https://xrfragment.org/#sidecar%20files
         this.loadWebVTT() // https://xrfragment.org/#sidecar%20files
@@ -24,7 +28,10 @@ elation.require([], function() {
 
     hideSystemFolder(o){
       // https://xrfragment.org/#system%20folders
-      if(o.name[0] == '_') o.visible = false
+      if(o.name[0] == '_'){ 
+        o.visible = false
+        o.pickable = false
+      }
     }
 
     isXRF(cb){
@@ -38,9 +45,10 @@ elation.require([], function() {
     }
 
     loadSound(){ // https://xrfragment.org/#sidecar%20files
+      room.removeObject('xrf_audio')
       const audio     = room.url.replace(this.extension,'.ogg') 
       room.loadNewAsset("sound", {id:"xrf_audio", src:audio})
-      this.sound = room.createObject('sound',{ id: "xrf_audio", js_id: 'xrf_audio' })
+      this.sound = room.createObject('sound',{ id: "xrf_audio", js_id: 'xrf_audio', loop:true })
     }
 
     loadWebVTT(){ // https://xrfragment.org/#sidecar%20files
@@ -57,16 +65,18 @@ elation.require([], function() {
       this.btn = room.createObject('object',{
         id: 'cube',
         js_id: 'btnstart',
-        pos: '0.09 3.3 4',
-        scale: '2 0.5 0.2',
-        col: '0.33 0.33 0.33',
+        pos: player.localToWorld( V(0,1.8,-1) ),
+        scale: '0.5 0.125 0.01',
+        col: '0.5 0.5 0.5',
+        lighting:false,
         sync: true,
         billboard: 'y',
         collision_id: 'cube'
       })
       const label = this.btn.createObject('text',{
         text: 'Start experience',
-        col: '1 1 1',
+        lighting:false,
+        col: '0 0 0',
         pos: '0 -0.15 0.5',
         scale: '1.2 5 1.2',
       })
@@ -74,46 +84,108 @@ elation.require([], function() {
     }
 
     initSubtitle(){
-      this.subtitle = room.createObject('paragraph',{
+      this.subtitle = player.createObject('paragraph',{
         js_id: 'subtitle',
-        pos: '0 0.5 0',
-        test: 'Lorem ipsum dolor sit amet',
+        pos: '0 1.7 -1.5',
+        lighting: false,
+        pickable: false,
         css: `.paragraphcontainer{ 
           background: transparent;
+          text-align:center;
           height:100%; 
           width:100%; 
-          padding:50px; 
-          font-size:50px; 
-          display:block;  
+          display: flex;
+          align-items: center;
+          font-size:55px; 
+          line-height:55px;
+          text-shadow: 0px 0px 2px #FFFF;
           color:black; 
-        }`,
-        text_col: '0.5 0.5 0.5',
+        }
+        .subtitle{
+          width:100%;
+        }
+        .loading{
+          background:#FFF7;
+          display:inline-block;
+          font-size:22px;
+          font-family: monospace;
+          line-height:30px;
+          padding:20px;
+          border-radius:15px;
+        }
+        `,
+        text_col: '1 1 1',
         back_col: '1 1 1'
       })
+      this.subtitle.objects['3d'].depthWrite = false 
+      this.subtitle.objects['3d'].depthTest = false 
+      this.subtitle.objects['3d'].renderOrder = 100 
+      this.subtitle.setHTML = (html) => this.subtitle.text = `<div class='subtitle'>${html}</div>`
     }
 
     start(){
       this.sound.pos = '0 0 0'
       this.sound.play()
       this.btn.visible = false
+      this.btn.pickable = false
     }
 
     update(){
-      if( this.sound?.playStarted && this.sound.audio?.context ){
-        let time = this.audio.context.currentTime
+      if( this.update.id ) return // throttle
+      const advance = () => {
+        if( !this?.sound?.timeoffset && this?.sound?.audio?.context){ 
+          this.sound.timeoffset = this.sound.audio.context.currentTime
+        }
+        if( this?.sound?.timeoffset != undefined &&
+            this.webvtt?.items[ this.webvtt?.i ] && 
+            this?.sound?.playStarted             && 
+            this?.sound?.audio?.context?.currentTime ){
+
+          const time = this.sound.audio.context.currentTime - this.sound.timeoffset;
+          let item = this.webvtt.items[ this.webvtt.i ]
+          if( !item.seen && time > item.start.ts ){
+            this.subtitle.setHTML(`
+              ${ item.who ? `<b>${item.who}:</b><br/>` : '' }
+              ${item.text.replace(/\n/g,'<br/>')}
+            `)
+            if( room.hyperlink && item.href && !item.seen ){
+              room.hyperlink.execute(item.href, {portalActivateDelay:6000})
+            }
+            item.seen = true
+          }
+          if( item.seen && time > item.stop.ts ){
+            this.subtitle.text = ''
+            this.webvtt.i++
+          }
+        }
+        this.update.id = false 
       }
+      this.update.id = setTimeout( () => advance(), 100 ) // throttle 
     }
 
     // naive webvtt parser
     parseWEBVTT(text) {
+      let i = 0;
       const WEBVTT_HEADER = /^WEBVTT/i;
       const TIME_LINE     = /^([0-9:.]+)\s+-->\s+([0-9:.]+)(?:\s+(.+))?$/;
-      const WHO  = /^<v ([^>]+)>/
-
-      const lines = text.split(/\r?\n/)
-                        .map( (line) => line.trim() )
-      const result = { type: "WEBVTT", items: [] };
-      let i = 0;
+      const WHO           = /^<v ([^>]+)>/
+      const HREF          = / href:([^ ]+)/
+      const result        = { type: "WEBVTT", items: [], i: 0 };
+      const lines         = text.split(/\r?\n/)
+                                .map( (line) => line.trim() )
+      const vttToSeconds  = (vttString) => {
+        const parts = vttString.split(':');
+        let hours = 0, minutes = 0, secondsWithMs;
+        if (parts.length === 3) { [hours, minutes, secondsWithMs] = parts; }
+        else { [minutes, secondsWithMs] = parts; } // Format is MM:SS.mmm
+        const [seconds, milliseconds] = secondsWithMs.split('.');
+        return (
+          (parseInt(hours) * 3600) +
+          (parseInt(minutes) * 60) +
+          (parseInt(seconds) * 1) +
+          parseInt(milliseconds || 0)
+        );
+      }
 
       // Skip the WEBVTT header line
       if (WEBVTT_HEADER.test(lines[i].trim())) i++
@@ -123,8 +195,9 @@ elation.require([], function() {
         const timeMatch = lines[i].match(TIME_LINE);
         if (timeMatch) {
           const item = {
-            start: {str:timeMatch[1], ts: this.vttToSeconds(timeMatch[1]) },
-            stop:  {str:timeMatch[2], ts: this.vttToSeconds(timeMatch[2]) },
+            start: {str:timeMatch[1], ts: vttToSeconds(timeMatch[1]) },
+            stop:  {str:timeMatch[2], ts: vttToSeconds(timeMatch[2]) },
+            href:  lines[i].match(HREF) ? lines[i].match(HREF)[1] : false,
             who: false,
             text: ""
           };
@@ -136,7 +209,7 @@ elation.require([], function() {
           }
           // Collect all text lines until next empty line
           while (i < lines.length && lines[i].trim() !== "") {
-            item.text += (item.text ? "\n" : "") + lines[i].trim();
+            item.text += (item.text ? "\n" : "") + lines[i] ;
             i++;
           }
 
@@ -146,18 +219,13 @@ elation.require([], function() {
       return result;
     }
 
-    vttToSeconds(vttString){
-      const parts = vttString.split(':');
-      let hours = 0, minutes = 0, secondsWithMs;
-      if (parts.length === 3) { [hours, minutes, secondsWithMs] = parts; }
-      else { [minutes, secondsWithMs] = parts; } // Format is MM:SS.mmm
-      const [seconds, milliseconds] = secondsWithMs.split('.');
-      return (
-        (parseInt(hours) * 3600) +
-        (parseInt(minutes) * 60) +
-        (parseInt(seconds) * 1) +
-        parseInt(milliseconds || 0)
-      );
+    cleanup(){
+      const deleteJsId = (js_id) => {
+        for( let i in player.children ) 
+          if( player.children[i].js_id == js_id )
+            player.remove( player.children[i] )
+      }
+      deleteJsId('subtitle')
     }
 
   })
@@ -173,4 +241,16 @@ elation.events.add(null, 'room_load_complete', xrf_install_sidecarfiles )
 elation.events.add(null, 'janusweb_script_frame', function(){
   if( room?.sidecarfile ) room.sidecarfile.update()
 })
+elation.events.add(null, 'room_load_start', function(e){
+  if( room?.sidecarfile?.subtitle ) room.sidecarfile.subtitle.setHTML(`<div class='loading'>🔗 ${e.data.baseurl}<br/><br/>please wait..</div>`)
+})
+
+// some convenience WebVTT cue settings => room function mappings 
+// href:#fadeAudioOut&spawnhere => room.fadeAudioOut()
+// href:#myfunc=3               => room.myfunc(3)
+elation.events.add(null, 'href', function(e){
+  const {url,hash} = room.hyperlink.getUrlObject(e.data.href)
+  hash.forEach( (v,k) => { if( room[k] ) room[k](v) })
+})
+
 xrf_install_sidecarfiles()

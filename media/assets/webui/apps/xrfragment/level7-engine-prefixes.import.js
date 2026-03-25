@@ -10,6 +10,11 @@ xrf_engines = function(){
   const map = (obj,key,realKey) => {
     let match = true 
 
+    // compatibility workaround: some 3D editors omit false booleans in export :/
+    // therefore we support boolean strings
+    if( obj.userData[key] == 'false' ) obj.userData[key] = false
+    if( obj.userData[key] == 'true'  ) obj.userData[key] = true
+
     // special cases
     switch( key ){
       case "-three-material.blending": if( obj.material ){
@@ -20,7 +25,9 @@ xrf_engines = function(){
                                            'THREE.SubtractiveBlending': THREE.SubtractiveBlending,
                                            'THREE.MultiplyBlending':    THREE.MultiplyBlending
                                          }
-                                         if( modes[ obj.userData[key] ] ) obj.material.blending = modes[ obj.userData[key] ]
+                                         setTimeout( () => { // not sure why this only works in setTimeout
+                                           if( modes[ obj.userData[key] ] ) obj.material.blending = modes[ obj.userData[key] ]
+                                         },10)
                                        }
                                        break;
 
@@ -123,10 +130,11 @@ xrf_engines = function(){
 
 
 xrf_engines.toJanusObject = function(obj,opts){
+  if( room.objects[ obj.name ] ) return room.objects[ obj.name ]
   opts = opts || {}
   opts.tag = opts.tag || 'object'
   const create = () => room.createObject( opts.tag,{ js_id: obj.name, ...opts })
-  let jo = room.objects[ obj.name] || create()
+  let jo = create()
   jo.objects['3d'] = obj
   return jo
 }
