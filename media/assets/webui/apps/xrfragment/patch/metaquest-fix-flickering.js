@@ -4,9 +4,8 @@ setActiveRoom = room.janus.setActiveRoom.bind(room.janus)
 room.janus.setActiveRoom = function(url,referer,skipURL){
   if( url.replace(/#.*/,'') != room.url ){
     room.fadeAudioOut()
-    room.skybox  = false
     setTimeout( function(){ 
       setActiveRoom.apply(room.janus, [url, referer, skipURL])
-    }, 1000)
+    }, 500)
   } // ignore same-room calls (it restarts audio when clicking internal hyperlinks)
 }

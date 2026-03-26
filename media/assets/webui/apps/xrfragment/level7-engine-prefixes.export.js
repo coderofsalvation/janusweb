@@ -42,6 +42,7 @@ xrf_export = {
     e.data.scene.userData['-janus-source'] = room.getRoomSource()
   },
   getAttributes(thing){
+    if( !thing ) return {}
     let proxy     = thing.getProxyObject(),
         propdefs  = thing._thingdef.properties,
         proxydefs = proxy._proxydefs,

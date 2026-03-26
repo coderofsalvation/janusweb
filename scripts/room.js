@@ -299,10 +299,11 @@ elation.require([
               spawnpoint.orientation.multiply(node.orientation);
             }
             spawnpoint.orientation.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0))); // Flip 180 degrees from portal orientation
-            break;
+            return spawnpoint;
           }
         }
-      } else if (this.urlhash) {
+      }
+      if (this.urlhash) {
         // XR Fragments deeplink spec (Level1: URL) https://xrfragment.org/#teleport%20camera
         // backwards-compat: pos-names are deprecated
         let obj

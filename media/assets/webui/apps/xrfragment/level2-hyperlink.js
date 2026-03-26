@@ -14,7 +14,11 @@ elation.require([], function() {
     constructor(object) {
       this.scene = elation.engine.instances.default.systems.world.scene['world-3d'] 
       this._object = object
-      this.cleanupHUDLUT()
+      this.init()
+    }
+
+    init(){
+      this.cleanup()
       this.scan( this.scene )
       this.setupShroud()
     }
@@ -66,23 +70,23 @@ elation.require([], function() {
       object.hasHref = true
     }
 
-    cleanupHUDLUT(){
-      const cam = player.camera.objects['3d'] 
-      for( let i in cam.children ){
-        if( cam.children[i].xrf ) cam.remove( cam.children[i] )
-      }
-      while( cam.children.length ) cam.remove( cam.children[0] )
+    cleanup(){
+      const head = player.head.objects['3d'] 
+      head.children
+      .filter( (child) => child.xrf_cleanup ? child : false ) 
+      .map( (child) => child.xrf_cleanup() )
     }
 
     detectHUDLUT(object){
       // XR Fragment HUD extensions: https://xrfragment.org/#teleport%20camera%20spawnpoint
       if( object.type == 'PerspectiveCamera' && object.name == 'spawn' && object.children.length ){
-        const cam = player.camera.objects['3d'] 
-        // move children to player camera2
-        while( cam.children.length ) cam.remove( cam.children[0] )
+        const head = player.head.objects['3d'] 
+        // move children to player head
         while( object.children.length ){ 
-          object.children[0].xrf = true
-          cam.add( object.children[0] )
+          object.children[0].xrf_cleanup = function(me,object){
+            object.add( me ) // add back
+          }.bind(null, object.children[0], object )
+          head.add( object.children[0] )
         }
       }
     }
@@ -216,6 +220,15 @@ elation.events.add(null, 'href', function(e){
 })
 
 elation.events.add(null, 'room_load_complete', xrf_install_hyperlinks ) 
+elation.events.add(null, 'room_disable', function(e){
+  if( room?.hyperlink ) room.hyperlink.cleanup()
+})
+
+elation.events.add(null, 'room_enable', function(e){
+  if( room?.hyperlink ) room.hyperlink.init()
+  else xrf_install_hyperlinks()
+})
+
 elation.events.add(null, 'janusweb_script_frame', function(){
   if( room?.hyperlink ) room.hyperlink.update()
 })

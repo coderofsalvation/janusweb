@@ -19,7 +19,6 @@ elation.require([], function() {
     init(){
       this.cleanup()
       if( room.url.match(this.extension) && this.isXRF(this.hideSystemFolder) ){
-        this.loadSound()  // https://xrfragment.org/#sidecar%20files
         this.loadWebVTT() // https://xrfragment.org/#sidecar%20files
         this.initStartButton()
         this.initSubtitle()
@@ -81,6 +80,11 @@ elation.require([], function() {
         scale: '1.2 5 1.2',
       })
       this.btn.addEventListener('click', () => this.start() )
+      this.positionStartButton()
+    }
+
+    positionStartButton(){
+      this.btn.pos = player.localToWorld( V(0,1.8,-1) )
     }
 
     initSubtitle(){
@@ -123,15 +127,8 @@ elation.require([], function() {
       this.subtitle.setHTML = (html) => this.subtitle.text = `<div class='subtitle'>${html}</div>`
     }
 
-    start(){
-      this.sound.pos = '0 0 0'
-      this.sound.play()
-      this.btn.visible = false
-      this.btn.pickable = false
-    }
-
     update(){
-      if( this.update.id ) return // throttle
+      if( this.update.id || !this.playing ) return // throttle
       const advance = () => {
         if( !this?.sound?.timeoffset && this?.sound?.audio?.context){ 
           this.sound.timeoffset = this.sound.audio.context.currentTime
@@ -219,6 +216,36 @@ elation.require([], function() {
       return result;
     }
 
+    start(){
+      // reset subtitles
+      if( this?.webvtt?.items ){
+        this.webvtt.items.map( (item) => item.seen = undefined )
+        this.webvtt.i = 0;
+      }
+      // start sound
+      this.loadSound()  // https://xrfragment.org/#sidecar%20files
+      this.sound.pos = '0 0 0'
+      if( this.sound.isPlaying ) this.sound.stop()
+      this.sound.timeoffset = undefined
+      this.sound.play()
+      // ensure subtitle
+      player.add(this.subtitle)
+      // hide button 
+      this.btn.visible = false
+      this.btn.pickable = false
+      // mark playing
+      this.playing = true
+    }
+
+
+    stop(){
+      this.playing = false
+      this.update.id = false
+      this.subtitle.text = ''
+      this.btn.visible = true
+      this.btn.pickable = true
+    }
+
     cleanup(){
       const deleteJsId = (js_id) => {
         for( let i in player.children ) 
@@ -244,6 +271,17 @@ elation.events.add(null, 'janusweb_script_frame', function(){
 elation.events.add(null, 'room_load_start', function(e){
   if( !e.data ) return
   if( room?.sidecarfile?.subtitle ) room.sidecarfile.subtitle.setHTML(`<div class='loading'>🔗 ${e.data.name}<br/><br/>please wait..</div>`)
+})
+
+elation.events.add(null, 'room_disable', function(){
+  if( room?.sidecarfile?.subtitle ) room.sidecarfile.stop()
+})
+
+elation.events.add(null, 'room_enable', function(){
+  if( room?.sidecarfile?.subtitle ){ 
+    // wait for the player to get repositioned
+    setTimeout( () => room.sidecarfile.positionStartButton(), 500 )
+  }
 })
 
 // some convenience WebVTT cue settings => room function mappings 
