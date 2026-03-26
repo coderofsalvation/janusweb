@@ -250,7 +250,6 @@ elation.require([
       if( pos.equals(player.position) ) return // ignore 
       if (player.parent.id !== this.id) {
         // Reparent player to the room if necessary
-        debugger
         this.appendChild(player.getProxyObject());
       }
       player.reset_position();
@@ -1665,6 +1664,8 @@ elation.require([
         assetlist.push({
           assettype: 'shader',
           name: args.id,
+          shadertype: args.shadertype || 'default',
+          hasalpha: args.hasalpha,
           fragment_src: args.src,
           vertex_src: args.vertex_src,
           uniforms: args.uniforms,

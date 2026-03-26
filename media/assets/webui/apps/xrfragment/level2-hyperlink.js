@@ -14,6 +14,7 @@ elation.require([], function() {
     constructor(object) {
       this.scene = elation.engine.instances.default.systems.world.scene['world-3d'] 
       this._object = object
+      this.cleanupHUDLUT()
       this.scan( this.scene )
       this.setupShroud()
     }
@@ -52,7 +53,7 @@ elation.require([], function() {
 
     scan(scene,cb){
       scene.traverse( (object) => {
-        this.detectHUD(object)
+        this.detectHUDLUT(object)
         this.detectHref(object)
       })
     }
@@ -65,13 +66,24 @@ elation.require([], function() {
       object.hasHref = true
     }
 
-    detectHUD(object){
+    cleanupHUDLUT(){
+      const cam = player.camera.objects['3d'] 
+      for( let i in cam.children ){
+        if( cam.children[i].xrf ) cam.remove( cam.children[i] )
+      }
+      while( cam.children.length ) cam.remove( cam.children[0] )
+    }
+
+    detectHUDLUT(object){
       // XR Fragment HUD extensions: https://xrfragment.org/#teleport%20camera%20spawnpoint
       if( object.type == 'PerspectiveCamera' && object.name == 'spawn' && object.children.length ){
         const cam = player.camera.objects['3d'] 
         // move children to player camera2
         while( cam.children.length ) cam.remove( cam.children[0] )
-        while( object.children.length ) cam.add( object.children[0] )
+        while( object.children.length ){ 
+          object.children[0].xrf = true
+          cam.add( object.children[0] )
+        }
       }
     }
 

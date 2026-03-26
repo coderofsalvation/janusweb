@@ -8,12 +8,21 @@ xrf_engines = function(){
   let cleanup = []
 
   const map = (obj,key,realKey) => {
-    let match = true 
+    let match     = true 
 
     // compatibility workaround: some 3D editors omit false booleans in export :/
     // therefore we support boolean strings
     if( obj.userData[key] == 'false' ) obj.userData[key] = false
     if( obj.userData[key] == 'true'  ) obj.userData[key] = true
+
+    // increment/decrement
+    let scroller = key.match(/[+]$/) && typeof obj.userData[key] == 'number'
+    if( scroller && !scene.scrollers ){
+      scene.scrollers = []
+      elation.events.add(null, 'janusweb_script_frame', function(e){
+        scene.scrollers.map( (f) => f(e.data) ) // e.data == delta
+      })
+    }
 
     // special cases
     switch( key ){
@@ -27,6 +36,18 @@ xrf_engines = function(){
                                          }
                                          setTimeout( () => { // not sure why this only works in setTimeout
                                            if( modes[ obj.userData[key] ] ) obj.material.blending = modes[ obj.userData[key] ]
+                                         },10)
+                                       }
+                                       break;
+
+      case "-three-material.sides":    if( obj.material ){
+                                         const modes = {
+                                           'THREE.FrontSide':  THREE.NoBlending,
+                                           'THREE.BackSide':   THREE.NormalBlending,
+                                           'THREE.DoubleSide': THREE.DoubleSide
+                                         }
+                                         setTimeout( () => { // not sure why this only works in setTimeout
+                                           if( modes[ obj.userData[key] ] ) obj.material.sides = modes[ obj.userData[key] ]
                                          },10)
                                        }
                                        break;
@@ -46,54 +67,43 @@ xrf_engines = function(){
                                      });
                                      break;
 
-      case "-janus-assetlist":       {
-                                       try{
-                                         let assetlist = JSON.parse(obj.userData[key] )
-                                         assetlist.map( (a) => {
-                                           if( a.name ) a.id = a.name 
-                                           room.loadNewAsset(a.assettype, a) 
-                                           debugger
-                                         })
-                                         break;
-                                       }catch(e){ 
-                                         console.warn("-janus-assetlist invalid JSON") 
-                                         break;
-                                       }
-                                     }
-
-      // lazy initializers
-      case "-janus-shader_id": 
-      case "-janus-image_id": 
-      case "-janus-sound_id": 
-      case "-janus-video_id":        setTimeout( () => {
-                                       toJanusObject(obj)[realKey] = obj.userData[key]
-                                     },500)
-                                     break;
-
       // DECLARATIVE entities
-      case "-janus-tag":             
-
-                                     let opts    = {}// rotation: '0 -180 0' }
-                                     opts.js_id = opts.name = opts.jsid = String(`-janus-${obj.name}_${obj.userData['-janus-tag']}`).replace(/.*janus-/,'-janus-')
+      case "-janus-tag":             let opts    = {}// rotation: '0 -180 0' }
                                      for( let i in obj.userData ){ 
+                                       if( !i.match(/^-janus-/) ) continue
                                        opts[ i.replace(/-janus-/,'') ] = obj.userData[i]
                                      }
-                                     const jo = room.createObject( opts.tag, opts )
-                                     jo.objects['3d'].name = opts.js_id
-                                     jo.visible = false
-                                      
-                                     // replace janusobject with nested THREE obj
-                                     // we need setTimeout otherwise quaternion is not updated 
-                                     // https://github.com/jbaicoianu/janusweb/issues/306
-                                     obj.parent.add( jo.objects['3d'] )
-                                     setTimeout( () => {
-                                       jo.orientation.copy( obj.quaternion)
-                                       jo.position.copy( obj.position )
-                                       jo.visible = true
-                                     },200)
-                                     // mark previously generated geo/materials by janusweb export for deletion
-                                     obj.traverse ( (o) => cleanup.push(o) )
-                                     cleanup.push(obj)
+
+                                     // create asset
+                                     if( obj.userData['-janus-tag'].match(/^asset/) ){
+                                       if( opts.src ) opts.src = room.baseurl + opts.src
+                                       room.loadNewAsset( opts['tag'].replace(/^asset/,''), opts )
+                                       //opts.assettype = opts['tag'].replace(/^asset/,'')
+                                       //room.loadRoomAssets({
+                                       //  assets: {
+                                       //    assetlist: [opts]
+                                       //  }
+                                       //});
+                                     }else{
+                                       opts.js_id = opts.name = opts.jsid = String(`-janus-${obj.name}_${obj.userData['-janus-tag']}`).replace(/.*janus-/,'-janus-')
+                                       // create room object
+                                       const jo = room.createObject( opts.tag, opts )
+                                       jo.objects['3d'].name = opts.js_id
+                                       jo.visible = false
+                                        
+                                       // replace janusobject with nested THREE obj
+                                       // we need setTimeout otherwise quaternion is not updated 
+                                       // https://github.com/jbaicoianu/janusweb/issues/306
+                                       obj.parent.add( jo.objects['3d'] )
+                                       setTimeout( () => {
+                                         jo.orientation.copy( obj.quaternion)
+                                         jo.position.copy( obj.position )
+                                         jo.visible = true
+                                       },200)
+                                       // mark previously generated geo/materials by janusweb export for deletion
+                                       obj.traverse ( (o) => cleanup.push(o) )
+                                       cleanup.push(obj)
+                                     }
                                      break;
       // OBJECTS
       case "-janus-collision_id":    const collision_id = obj.userData[key]
@@ -119,7 +129,7 @@ xrf_engines = function(){
                                      break;
 
       default:                      match = false                     
-               
+              
                                     // JANUS fallthrough
                                     if( key.match(/^-janus-/) ){
                                       // *TODO* more heuristics to determine scene
@@ -133,13 +143,27 @@ xrf_engines = function(){
 
                                     // THREE fallthrough
                                     if( key.match(/^-three-/) ){
-                                      if( key.match(/-material\./) ){
-                                        if( obj.material ) obj.material[ realKey.replace('material.','') ] = obj.userData[key];
+
+                                      if( realKey.match('material.') ){ // clone shared materials
+                                        obj.material = obj.material.clone()
+                                        if( realKey.match('material.map') ) obj.material.map = obj.material.map.clone()
+                                      }
+                                      
+                                      const setKeyVal     = (o, path, val       ) => new Function('o', 'v',     `o.${path}  = v               `)(o, val);
+                                      if( scroller ){
+                                        const setKeyValIncr = (o, path, val, delta) => new Function('o', 'speed', `o.${path} += ${delta} * speed`)(o, val);
+                                        const myscroller    = function(path,val,delta){
+                                          setKeyValIncr( this, path, val, delta) 
+                                        }.bind(obj, realKey.replace(/[+]$/,''), obj.userData[key])
+                                        scene.scrollers.push(myscroller)
                                       }else{
-                                        obj[realKey] = obj.userData[key];
+                                        try{ 
+                                          setKeyVal( obj, realKey, obj.userData[key] ) 
+                                        }catch(e){ console.error(e) }
                                       }
                                       match = true
                                     }
+                                    break;
     }
 
     if( match ){

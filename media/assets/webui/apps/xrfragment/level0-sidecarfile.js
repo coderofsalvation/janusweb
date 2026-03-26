@@ -242,7 +242,8 @@ elation.events.add(null, 'janusweb_script_frame', function(){
   if( room?.sidecarfile ) room.sidecarfile.update()
 })
 elation.events.add(null, 'room_load_start', function(e){
-  if( room?.sidecarfile?.subtitle ) room.sidecarfile.subtitle.setHTML(`<div class='loading'>🔗 ${e.data.baseurl}<br/><br/>please wait..</div>`)
+  if( !e.data ) return
+  if( room?.sidecarfile?.subtitle ) room.sidecarfile.subtitle.setHTML(`<div class='loading'>🔗 ${e.data.name}<br/><br/>please wait..</div>`)
 })
 
 // some convenience WebVTT cue settings => room function mappings 
