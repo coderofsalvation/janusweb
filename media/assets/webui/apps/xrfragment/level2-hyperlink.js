@@ -66,7 +66,7 @@ elation.require([], function() {
       if( !object?.userData?.href || object.hasHref ) return
 
       const jobj = this.toJanusObject(object)
-      jobj.addEventListener("click", () => this.execute(object.userData.href,{jobj,scene}) )
+      jobj.addEventListener("click", () => this.execute(object.userData.href,{jobj,scene:this.scene}) )
       object.hasHref = true
     }
 
@@ -105,8 +105,12 @@ elation.require([], function() {
           case "pos":  // legacy fallthrough
           default:     // level2: internal teleports/spawn
                        // https://xrfragment.org/#%F0%9F%93%9C%20level2%3A%20explicit%20hyperlinks   
+                       room.referrer = room.urlhash
                        room.urlhash = v || k
-                       if( this.scene.getObjectByName(v) ) room.setPlayerPosition()
+                       if( this.scene.getObjectByName(v) ){ 
+                         room.setPlayerPosition()
+                         this.spawnBackLink()
+                       }
                        // level2: animation triggers 
                        // https://xrfragment.org/#%F0%9F%93%9C%20level2%3A%20explicit%20hyperlinks   
                        for( let i in this._object.children ){
@@ -131,6 +135,23 @@ elation.require([], function() {
         janus.updateClientURL(fullUrl)
       }
       elation.events.fire({element: room, type: 'room_change', data: room});
+    }
+
+    spawnBackLink(){
+      for( let i in room.objects ){
+        if( i.match(/^reciprocal-hashlink/) ) room.removeObject(i)
+      }
+      let link = room.createObject('link', {
+        rotation: '0 45 0',
+        url: room.url+'#'+room.referrer,
+        title: 'go back',
+        round: true,
+        shader_id: 'defaultportal',
+        js_id: 'reciprocal-hashlink',
+      });
+      setTimeout( () => {
+        link.position = player.localToWorld(V(1.5,0,1.5))
+      },10)
     }
 
     executeExternal(href, opts){

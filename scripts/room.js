@@ -311,7 +311,7 @@ elation.require([
           let obj = this.getObjectById(name) || this.getObjectByDeepName(name)
           if (obj) {
             obj.localToWorld(spawnpoint.position.set(0,0,0));
-            if( player.engine.client.view.xrsession && obj.type == 'PerspectiveCamera' ){
+            if( obj.type == 'PerspectiveCamera' ){
               spawnpoint.position.y -= 1.6 // https://xrfragment.org/#teleport%20camera%20spawnpoint
             }
             spawnpoint.orientation.setFromRotationMatrix(obj.objects['3d'].matrixWorld.lookAt(spawnpoint.position, obj.localToWorld(V(0,0,-1)), obj.localToWorld(V(0,1,0).sub(spawnpoint.position))));

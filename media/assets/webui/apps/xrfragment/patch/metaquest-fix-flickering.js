@@ -7,5 +7,9 @@ room.janus.setActiveRoom = function(url,referer,skipURL){
     setTimeout( function(){ 
       setActiveRoom.apply(room.janus, [url, referer, skipURL])
     }, 500)
-  } // ignore same-room calls (it restarts audio when clicking internal hyperlinks)
+  }else{ 
+    room.urlhash = url.match('#') ? url.replace(/.*#/,'') : 'spawn'
+    room.setPlayerPosition()
+    // ignore same-room setActiveRoom-calls (it restarts audio when clicking internal hyperlinks)
+  }
 }

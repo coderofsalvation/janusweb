@@ -3,6 +3,11 @@
  * level0 sidecar files as per the XR URI Fragments spec
  * https://xrfragment.org/#sidecar%20files
  * 
+ * NOTE: you can also load sidecarfiles in a roomscript manually:
+ *
+ *       elation.events.add(null, 'room_load_complete', function(e){
+ *         if( room?.sidecarfile ) room.sidecarfile.load()
+ *       })
  */
 
 elation.require([], function() {
@@ -13,16 +18,16 @@ elation.require([], function() {
       this._object   = object
       this.extension = /\.(gltf|glb|dae)$/
       this.extensionXRF = /\.xrf\./ 
-      this.init()
+      if( room.url.match(this.extension) && this.isXRF(this.hideSystemFolder) ){
+        this.load()
+      }
     }
 
-    init(){
+    load(){
       this.cleanup()
-      if( room.url.match(this.extension) && this.isXRF(this.hideSystemFolder) ){
-        this.loadWebVTT() // https://xrfragment.org/#sidecar%20files
-        this.initStartButton()
-        this.initSubtitle()
-      }
+      this.loadWebVTT() // https://xrfragment.org/#sidecar%20files
+      this.initStartButton()
+      this.initSubtitle()
     }
 
     hideSystemFolder(o){
@@ -109,7 +114,7 @@ elation.require([], function() {
           width:100%;
         }
         .loading{
-          background:#FFF7;
+          background:#FFF;
           display:inline-block;
           font-size:22px;
           font-family: monospace;
@@ -124,7 +129,10 @@ elation.require([], function() {
       this.subtitle.objects['3d'].depthWrite = false 
       this.subtitle.objects['3d'].depthTest = false 
       this.subtitle.objects['3d'].renderOrder = 100 
-      this.subtitle.setHTML = (html) => this.subtitle.text = `<div class='subtitle'>${html}</div>`
+      this.subtitle.setHTML = (html) => {
+        this.subtitle.visible = true
+        this.subtitle.text = `<div class='subtitle'>${html}</div>`
+      }
     }
 
     update(){
@@ -151,7 +159,7 @@ elation.require([], function() {
             item.seen = true
           }
           if( item.seen && time > item.stop.ts ){
-            this.subtitle.text = ''
+            this.subtitle.visible = false 
             this.webvtt.i++
           }
         }
@@ -229,6 +237,7 @@ elation.require([], function() {
       this.sound.timeoffset = undefined
       this.sound.play()
       // ensure subtitle
+      this.subtitle.visible = false 
       player.add(this.subtitle)
       // hide button 
       this.btn.visible = false
@@ -241,7 +250,7 @@ elation.require([], function() {
     stop(){
       this.playing = false
       this.update.id = false
-      this.subtitle.text = ''
+      this.subtitle.visible = false 
       this.btn.visible = true
       this.btn.pickable = true
     }
