@@ -76,14 +76,8 @@ xrf_engines = function(){
 
                                      // create asset
                                      if( obj.userData['-janus-tag'].match(/^asset/) ){
-                                       if( opts.src ) opts.src = room.baseurl + opts.src
+                                       if( opts.src && !opts.src.match(/(^\.|:\/)/) ) opts.src = room.baseurl + opts.src
                                        room.loadNewAsset( opts['tag'].replace(/^asset/,''), opts )
-                                       //opts.assettype = opts['tag'].replace(/^asset/,'')
-                                       //room.loadRoomAssets({
-                                       //  assets: {
-                                       //    assetlist: [opts]
-                                       //  }
-                                       //});
                                      }else{
                                        opts.js_id = opts.name = opts.jsid = String(`-janus-${obj.name}_${obj.userData['-janus-tag']}`).replace(/.*janus-/,'-janus-')
                                        // create room object
