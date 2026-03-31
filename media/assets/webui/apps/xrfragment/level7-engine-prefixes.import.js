@@ -167,7 +167,10 @@ xrf_engines = function(){
 
   room.gravity = 0 // new default unless specified otherwise
   let scene = elation.engine.instances.default.systems.world.scene['world-3d'] 
-  applyPrefixes(scene,map)
+  // janus requires first initialzing of assets
+  const isAsset = (obj) => String(obj.userData['-janus-tag']).match(/^asset/)
+  applyPrefixes(scene,map, (o) => isAsset(o)  )
+  applyPrefixes(scene,map, (o) => !isAsset(o) )
   applyCleanup(cleanup)
 }
 
@@ -182,7 +185,8 @@ xrf_engines.toJanusObject = function(obj,opts){
   return jo
 }
 
-xrf_engines.applyPrefixes = function(scene,map){
+xrf_engines.applyPrefixes = function(scene,map,criteria){
+  criteria = criteria ? criteria : (obj) => true 
   scene.traverse( (obj) => {
     for( let field in obj.userData ){
       if( obj.userData[field] ){ 
