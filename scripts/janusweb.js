@@ -327,7 +327,7 @@ elation.require([
         baseurl: baseurl,
         corsproxy: this.corsproxy,
         deferload: true,
-        overlay:         portal ? true : false,
+        nested:          portal ? true : false,
         defaultlights:   portal ? false : true,
         skybox:          portal ? false : true,
         use_local_asset: portal ? false : true,
@@ -357,16 +357,14 @@ elation.require([
       this.initScripting();
       if( portal ){
         this.remove(newroom);
-        let target = portal.target && janus.currentroom 
-                     ? janus.currentroom.getObjectByDeepName(portal.target ) || 
-                       janus.currentroom.getObjectById(portal.target)        || 
-                       room.players[ portal.target ]                         ||
-                       portal
-                     : portal
-        if( portal.target == 'player' ) target = player // not part of the room, but useful for HUDs
-        elation.events.fire({element: this, type: 'room_overlay_add', data: {portal,newroom,target} });
-        target.add(newroom)
+        // portal (and media/assets/webui/xrfragments) will use this event to 
+        // relocate/reparent the nested room 
+        portal.add(newroom)
         newroom.enable()
+        let data = {portal,room:newroom}
+        //setTimeout( () => {
+          elation.events.fire({element: this,   type: 'room_load_nested', data });
+        //},100)
       }
       return newroom;
     }
