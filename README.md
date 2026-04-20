@@ -48,10 +48,12 @@
 - Oculus Rift, Vive, GearVR, Daydream, and Cardboard support via WebVR API
 - [Realtime collaboration](https://madjin.github.io/janus-guide/#/home/usecases) across all devices via built-in networking
 - Import Collada, OBJ, glTF, and other popular 3d file formats
+- Supported for nested and recursive decentralized worlds
 - 3D positional audio
 - Gamepad support via the HTML5 Gamepad API
 - Supports hand tracking peripherals like Leap Motion, Oculus Touch, and Vive controllers
 - Support for 2d, sbs3d/ou3d, and 360 degree video textures using HTML5 Video
+- Spatially project HTML/RSS/XML URLs (batteries-included URL-to-room/texture translators)
 - Scriptable client enables many customized uses
 - And [much more](https://madjin.github.io/janus-guide/#/home/toc)
 
