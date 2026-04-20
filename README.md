@@ -1,6 +1,6 @@
 <p align="center"><a href="https://web.janusvr.com" target="_blank"><img width="480" alt="JanusWeb" src="https://imgur.com/ejvyphR.jpg"></a></p>
 
-<p align="center"><b>A web framework/browser for building rich virtual reality experiences.</b></p>
+<p align="center"><b>A WebXR browser for building hyperlinked virtual reality experiences.</b></p>
 
 <div align="center">
   <a href="https://janusvr.com">Site</a>
