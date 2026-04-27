@@ -48,6 +48,14 @@ jobs:
           mkdir -p www
           cp -r build/*/* www/ 2>/dev/null || cp -r build/* www/
 
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            build/*/janusweb-*.tar.gz 
+            build/*/janusrxr.com
+        #env: # only needed when creating a release in other repo
+        #  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -60,13 +68,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-      - name: Create Release and Upload Assets
-        uses: softprops/action-gh-release@v3
-        with:
-          files: |
-            build/*/janusweb-*.tar.gz 
-            build/*/janusrxr.com
-        #env: # only needed when creating a release in other repo
-        #  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        #
