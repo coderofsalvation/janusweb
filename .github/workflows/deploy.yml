@@ -46,8 +46,8 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            ./build/janusweb-*.tar.gz 
-            ./build/*/janusxr.com
+            build/janusweb-*.tar.gz 
+            build/*/janusxr.com
         #env: # only needed when creating a release in other repo
         #  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
