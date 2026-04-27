@@ -42,12 +42,6 @@ jobs:
           ./utils/build.sh
           ./utils/release.binary.sh
 
-      - name: Organize build artifacts
-        # Creates a clean 'www' folder and copies your build/sub/folders into it
-        run: |
-          mkdir -p www
-          cp -r build/*/* www/ 2>/dev/null || cp -r build/* www/
-
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v3
         with:
@@ -56,6 +50,12 @@ jobs:
             build/*/janusrxr.com
         #env: # only needed when creating a release in other repo
         #  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Organize build artifacts
+        # Creates a clean 'www' folder and copies your build/sub/folders into it
+        run: |
+          mkdir -p www
+          cp -r build/*/* www/ 2>/dev/null || cp -r build/* www/
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
