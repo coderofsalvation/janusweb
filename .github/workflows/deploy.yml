@@ -3,7 +3,7 @@ name: Build and Deploy to Pages
 on:
   push:
     # Monitor all branches so we can catch '#deploy' in commit messages
-    branches: ["master"]
+    branches: ["**"]
     tags:
       - "v*.*.*"
 
