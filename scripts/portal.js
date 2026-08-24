@@ -351,7 +351,6 @@ elation.require(['janusweb.janusbase'], function() {
         }
         elation.events.fire({element: this, type: 'janusweb_portal_click'});
       }
-      if( ev ) stopBubbleUpward()
       return false
     }
     this.useFocus = function(ev) {
