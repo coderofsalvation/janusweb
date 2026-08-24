@@ -348,8 +348,8 @@ elation.require([
         newroom.referrer = this.currentroom.url;
       } else {
         // to promote bidirectional networks: extract referrer from room.url hash or janusweb hash (if any)
-        newroom.referrer = document.location.href.replace(/#.*/,'')
-        if( url.match('janus.referrer=') ) newroom.referrer = elation.url( url )['janus.referrer'] 
+        if( document.location.href.match('janus.referrer') ) newroom.referrer = elation.url( document.location.href )['janus.referrer']
+        if( url.match('janus.referrer=')                   ) newroom.referrer = elation.url( url )['janus.referrer'] 
       }
 
       elation.events.fire({element: this, type: 'room_load_start', data: newroom});
