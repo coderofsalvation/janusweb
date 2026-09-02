@@ -88,6 +88,8 @@ elation.require([], function() {
 
     // source translator
     this.parseSource = async function(sourcecode, room){
+      const isJML = /<fireboxroom>[\s\S]*?<\/fireboxroom>/si;
+      if( sourcecode.match(isJML) ) return // JML takes precedence over microformats 
       if( !sourcecode.match( this.parseSource.regexAlternate) && 
           !sourcecode.match( this.parseSource.regex)){
         return 
