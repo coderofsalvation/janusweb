@@ -299,7 +299,7 @@ elation.require(['janusweb.janusbase','janusweb.translators.paragraph.html-xml-r
               async () => await window.fetch( finalUrl ).then( (res) => res.text() )
             )
           }else{
-            return this.text || this.room.fullsource
+            return this.text || this.selector ? this.room.fullsource : ''
           }
         }
       }
