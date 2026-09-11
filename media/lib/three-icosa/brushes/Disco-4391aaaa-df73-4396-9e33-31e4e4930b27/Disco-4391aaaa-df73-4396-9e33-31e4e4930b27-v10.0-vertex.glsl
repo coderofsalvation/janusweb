@@ -1,4 +1,3 @@
-#version 300 es
 // Copyright 2020 The Tilt Brush Authors
 // Updated to OpenGL ES 3.0 by the Icosa Gallery Authors
 //
@@ -21,11 +20,15 @@
 
 in vec4 a_position;
 in vec3 a_normal;
+in vec4 a_tangent;
 in vec4 a_color;
 in vec3 a_texcoord0;
+in vec4 a_texcoord1;
 
 out vec4 v_color;
 out vec3 v_normal;  // Camera-space normal.
+out vec3 v_tangent;
+out vec3 v_binormal;
 out vec3 v_position;
 out vec2 v_texcoord0;
 out vec3 v_light_dir_0;  // Camera-space light direction, main light.
@@ -39,13 +42,21 @@ uniform mat4 projectionMatrix;
 uniform mat3 normalMatrix;
 uniform mat4 u_SceneLight_0_matrix;
 uniform mat4 u_SceneLight_1_matrix;
+uniform bool u_isNewTiltExporter;
 
 uniform vec4 u_time;
 
 void main() {
 
   float t, uTileRate, waveIntensity;
-  float radius = a_texcoord0.z;  
+  float radius = a_texcoord0.z;
+  if (u_isNewTiltExporter) {
+    // New exporter can bake radius into UV1.x because UV0.z may be truncated.
+    float bakedRadius = a_texcoord1.x;
+    if (bakedRadius > 0.000001) {
+      radius = bakedRadius;
+    }
+  }
 
   t = u_time.z;
   uTileRate = 10.0;
@@ -61,8 +72,12 @@ void main() {
 
   gl_Position = projectionMatrix * modelViewMatrix * pos;
   f_fog_coord = gl_Position.z;
-  v_position = pos.xyz;
-  v_normal = normalMatrix * a_normal;
+  v_position = (modelViewMatrix * pos).xyz;
+  // Transform normal and tangent to view space
+  vec3 normal = normalize(normalMatrix * a_normal);
+  v_normal = normal;
+  v_tangent = normalize(normalMatrix * a_tangent.xyz);
+  v_binormal = normalize(cross(normal, v_tangent) * a_tangent.w);
   v_light_dir_0 = mat3(u_SceneLight_0_matrix) * vec3(0, 0, 1);
   v_light_dir_1 = mat3(u_SceneLight_1_matrix) * vec3(0, 0, 1);
   v_color = a_color;
