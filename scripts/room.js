@@ -807,20 +807,22 @@ elation.require([
           elation.events.fire({type: 'room_load_error', element: this, data: e.message});
         }
       } else {
-        var translator = this.getTranslator('default');
-        setTimeout(elation.bind(this, function() {
-          // TODO - use the new official translators here!
-          translator.exec({url: this.url, janus: this.properties.janus, room: this})
-                    .then(elation.bind(this, function(objs) {
-                      this.roomsrc = objs.source;
-                      this.loadRoomAssets(objs);
-                      this.createRoomObjects(objs);
-                      this.loaded = true;
-                      this.setActive();
-                      elation.events.fire({element: this, type: 'room_load_processed'});
-                      elation.events.fire({type: 'janus_room_load', element: this});
-                    }));
-        }), 0);
+        if( !this.nested ){
+          var translator = this.getTranslator('default');
+          setTimeout(elation.bind(this, function() {
+            // TODO - use the new official translators here!
+            translator.exec({url: this.url, janus: this.properties.janus, room: this})
+                      .then(elation.bind(this, function(objs) {
+                        this.roomsrc = objs.source;
+                        this.loadRoomAssets(objs);
+                        this.createRoomObjects(objs);
+                        this.loaded = true;
+                        this.setActive();
+                        elation.events.fire({element: this, type: 'room_load_processed'});
+                        elation.events.fire({type: 'janus_room_load', element: this});
+                      }));
+          }), 0);
+        }
       }
     }
     this.parseSource = function(data) { 
