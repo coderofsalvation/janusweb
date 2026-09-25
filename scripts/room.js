@@ -1073,7 +1073,7 @@ elation.require([
             let linkrot = new EulerDegrees();
             linkrot.radians.copy(this.spawnpoint.rotation);
             //linkrot.x *= THREE.MathUtils.RAD2DEG;
-            linkrot.y = linkrot.y + 180;
+            linkrot.y = linkrot.y + 90; // don't block desktop screen / cause false portal-click when activating mouse
             //linkrot.z *= THREE.MathUtils.RAD2DEG;
             let linkpos = this.spawnpoint.localToWorld(V(0,0,player.fatness/2));
             this.createObject('link', {
