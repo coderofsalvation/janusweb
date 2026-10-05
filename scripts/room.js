@@ -1059,13 +1059,15 @@ elation.require([
             // If no reciprocal link was found, spawn one so we can find our way back
             let linkrot = new EulerDegrees();
             linkrot.radians.copy(this.spawnpoint.rotation);
-            //linkrot.x *= THREE.MathUtils.RAD2DEG;
-            linkrot.y = linkrot.y + 90; // don't block desktop screen / cause false portal-click when activating mouse
             //linkrot.z *= THREE.MathUtils.RAD2DEG;
             let linkpos = this.spawnpoint.localToWorld(V(0,0,player.fatness/2));
-            this.createObject('link', {
+            const inVR = this.engine.systems.render.views.xr && this.engine.systems.render.renderer.xr.isPresenting
+            if( !player.enabled && !inVR ){
+              linkpos.x -= player.fatness // don't block desktop screen / cause false portal-click when activating mouse
+              linkpos.z -= player.fatness // don't block desktop screen / cause false portal-click when activating mouse
+            }
+            let link = this.createObject('link', {
               pos: linkpos,
-              rotation: linkrot,
               url: this.referrer,
               round: true,
               shader_id: 'defaultportal',
