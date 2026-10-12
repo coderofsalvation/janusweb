@@ -3,16 +3,11 @@ elation.require([
      'engine.things.generic', 'engine.things.label', 'engine.things.skybox',
     'janusweb.object', 'janusweb.portal', 'janusweb.image', 'janusweb.video', 'janusweb.text', 'janusweb.janusparagraph',
     'janusweb.sound', 'janusweb.januslight', 'janusweb.janusparticle', 'janusweb.janusghost',
-    'janusweb.translators.bookmarks', 'janusweb.translators.reddit', 'janusweb.translators.error', 'janusweb.translators.blank', 'janusweb.translators.default', 'janusweb.translators.dat', 'janusweb.translators.janusvfs', 'janusweb.translators.xrfragments', 'janusweb.translators.peertube', 'janusweb.translators.rss', 'janusweb.translators.aframe'
+    'janusweb.translators.bookmarks', 'janusweb.translators.reddit', 'janusweb.translators.error', 'janusweb.translators.blank', 'janusweb.translators.default', 'janusweb.translators.dat', 'janusweb.translators.janusvfs', 'janusweb.translators.xrfragments', 'janusweb.translators.rss', 'janusweb.translators.aframe'
   ], function() {
   let roomTranslators = false;
   function initRoomTranslators(room) {
-
-    room.translators = roomTranslators = {
-
-
-      '^peertube$': elation.janusweb.translators.peertube({janus: janus}),
-
+    roomTranslators = {
       '^janus-vfs:': elation.janusweb.translators.janusvfs({janus: janus}),
       '^about:blank$': elation.janusweb.translators.blank({janus: janus}),
       '^bookmarks$': elation.janusweb.translators.bookmarks({janus: janus}),
@@ -24,6 +19,9 @@ elation.require([
       '^aframe$': elation.janusweb.translators.aframe({janus: janus}),
       '^default$': elation.janusweb.translators.default({janus: janus}),
     }
+    const data = {translators:roomTranslators}
+    elation.events.fire({element: this, type: 'room_translator_register', data})
+    roomTranslators = data.translators 
   }
   elation.component.add('engine.things.janusroom', function() {
     this.postinit = function() {
@@ -772,7 +770,6 @@ elation.require([
       if (baseurl) {
         this.baseurl = baseurl;
       }
-
       var source
       // scan sourcecode for non-JML microformats within translators 
       for( m in roomTranslators ){
