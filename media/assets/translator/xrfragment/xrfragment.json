@@ -2,7 +2,6 @@
   "templates": {
   },
   "scripts":  [
-    "./translator.js",
     "./level0-sidecarfile.js",
     "./level2-hyperlink.js",
     "./level3-xrhints.js",
