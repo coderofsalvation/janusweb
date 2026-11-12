@@ -7,12 +7,15 @@
  * overlays: https://xrfragment.org/#%23!
  */
 
-export default function init(elation,room){
+export default function init(elation,room,opts){
     
+  // default https://xrfragment.org/#%F0%9F%93%9Clevel8%3A%20XR%20classes
   const defaultHints = 'vr ar portal embed hide collection'
+  const classList      = defaultHints.split(' ')
 
-  function xrf_install_xrhints(){
-      
+  let xrf_install_xrhints
+
+  xrf_install_xrhints = function(){
     let startXR        = janus.engine.client.startXR 
     let client         = janus.engine.client
 
@@ -47,58 +50,110 @@ export default function init(elation,room){
       return context
     }
 
-    // universal XR classes https://xrfragment.org/#%F0%9F%93%9Clevel8%3A%20XR%20classes
-    function applyXRHints(children, state){
-      if( applyXRHints.throttle ) return
-      applyXRHints.throttle = setTimeout( () => applyXRHints.throttle = null, 200)
-      // default https://xrfragment.org/#%F0%9F%93%9Clevel8%3A%20XR%20classes
-      const classList      = defaultHints.split(' ')
+    function getClassList(child,opts){
+      let childClassList = []
+      if( opts.janus && child.classList && child.classList.length > 0 ){
+        childClassList = child.classList
+      }
+      if( opts.three && child.userData['class'] ){
+        childClassList = child.userData['class'].split(" ")
+      }
+      return childClassList
+    }
 
-      children = children || room.children
-      state      = state || { visible: true, context: getContext.apply(room) }
-
-      const hasOverlap    = (a,b) => a.filter( (className) => ~b.indexOf(className) ).length > 0
+    function traverseJanusObjects(children,cb,seen){
+      children = children || []
+      seen     = seen || {}
       for( let i in children){
         const child = children[i]
-        if( child.classList && child.classList.length > 0 ){
-          if( hasOverlap( child.classList, classList ) ){
-            state.visible = hasOverlap( child.classList, state.context )
-          }
-        }
-        if( child.visible && !state.visible ){ 
-          child.visible = false // hidden in this context
-        }
+        cb(child)
         if( Object.keys(child.children || {}).length > 0 ){
-          applyXRHints.apply(room,[child.children,state])
+          traverseJanusObjects(child.children,cb,seen)
         }
       }
     }
-    if( elation?.engine?.instances?.default?.systems?.world?.scene ){
-      let scene = elation.engine.instances.default.systems.world.scene['world-3d']
-  //  // mark nested room (url_pos="0,0,0") for janus portals with URLs- containing #!
-  //  scene.traverse( (o) => {
-  //    if( o?.userData?.thing && o.userData.thing.componentname == 'engine.things.janusportal'){
-  //      let portal = o.userData.thing
-  //      if( portal.url.match(/#!/) ){
-  //        if( !portal.url_pos ) portal.url_pos = V(0,0,0) // enforce rendering nestedroom
-  //      }
-  //    }
-  //  })
+
+    // universal XR classes https://xrfragment.org/#%F0%9F%93%9Clevel8%3A%20XR%20classes
+    function applyXRHints(opts){
+      // apply to JanusRoom objects
+      traverseJanusObjects( room.objects, (child) => {
+        opts.callbacks.map( (cb) => cb(child, { ...opts, janus:true}) )
+      })
+      // apply to THREE objects
+      if( elation?.engine?.instances?.default?.systems?.world?.scene ){
+        let scene = elation.engine.instances.default.systems.world.scene['world-3d']
+        scene.traverse( (o) => {
+          opts.callbacks.map( (cb) => cb(o, { ...opts, three:true}) )
+        })
+      }
     }
 
-    applyXRHints.apply(room)
+    function applyXRLayers(child,opts){
+      const hasOverlap    = (a,b) => a.filter( (className) => ~b.indexOf(className) ).length > 0
+      let visible = true 
+      const childClassList = getClassList(child,opts)
+      if( childClassList.length ){
+        if( hasOverlap( childClassList, classList ) ){
+          visible = hasOverlap( childClassList, opts.context )
+        }
+      }
+      if( child.visible && !visible ){ 
+        const hide = (child) => child.visible = false
+        hide(child) // hidden in this context (works for both janus+three objects)
+        // also apply to children (janus=markup) (three=three objects)
+        if( opts.janus ) traverseJanusObjects( child.children, hide )
+        if( opts.three ) child.traverse( hide )
+      }
+    }
+
+    // https://xrfragment.org/#%F0%9F%93%9Clevel3%3A%20XR%20hints
+    function applyOccludable(child,opts){
+      const childClassList = getClassList(child,opts)
+      if( childClassList && ~childClassList.indexOf('occludable') ){
+        // dont write to colorbuffer
+        if( opts.three && child.material ) child.material.colorWrite = false
+        // render as first thing
+        if( opts.janus ){ 
+          child.layer       = -1000
+          child.color_write = false
+          setTimeout( () => {
+            child.objects['3d'].traverse( (o) => {
+              o.renderOrder = -1000  
+            })
+          }, 100)
+          // for janusobjects disable culling if culling is not set
+          if( ! child.args.properties?.cull_face ){
+            child.cull_face   = 'none'
+          }
+        }
+        if( opts.three   ) child.renderOrder = -1000
+      }
+    }
+
+    function startAnimation(){
+      try{
+        const animations = room.objects.scene.modelasset.animations
+        if( animations.length == 1 ){
+          room.objects.scene.modelasset.instances[0].userData.thing.anim_id = animations[0].name
+        } 
+      }catch(e){ console.log("no single-animation found") }
+    }
+
+    applyXRHints({ 
+      context:   getContext.apply(room),
+      callbacks: [ applyXRLayers, applyOccludable ]
+    })
+    startAnimation()
 
     if( !client.startXR.xrhints ){
      client.startXR = function(mode,opts){
         startXR.apply(client, [mode,opts])
-        //setTimeout( () => applyXRHints.apply(room), 100 )
+        //setTimeout( () => applyXRLayers.apply(room), 100 )
       }
     }
 
-
   }
 
-  xrf_install_xrhints()
   elation.events.add(null, 'room_load_complete', xrf_install_xrhints )
 
 }

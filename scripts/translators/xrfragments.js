@@ -31,5 +31,20 @@ elation.require([], function() {
     // example: <link rel="alternate" as="spatial-entrypoint" src="https://foo.org/bar.glb"> 
     this.parseSource.regex = /<link\s+[^>]*rel=['"]spatial-entrypoint['"][^>]*\/?>/si;
 
+    // also check any JML-room for: 
+    // level2 (href) hyperlinks: https://xrfragment.org/#%F0%9F%93%9C%20level2%3A%20explicit%20hyperlinks
+    // level3 (class) XR Hints : https://xrfragment.org/#%F0%9F%93%9Clevel3%3A%20XR%20hints
+    elation.events.add(null, 'room_enable', async function(e){
+      const datapath = elation.config.get('janusweb.datapath', '/media/janusweb');
+      if( !this.hyperlink ){
+        this.hyperlink = await import(datapath + 'assets/translator/xrfragment/level2-hyperlink.js')
+        this.hyperlink.default(elation,room,{JML:true})
+      }
+      if( !this.xrhints ){
+        this.xrhints   = await import(datapath + 'assets/translator/xrfragment/level3-xrhints.js')
+        this.xrhints.default(  elation,room,{JML:true})
+      }
+    })
+
   });
 });
