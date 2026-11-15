@@ -1,4 +1,5 @@
 let util = {}
+let levels = {}
 
 function getTemplates(){
   return {
@@ -23,7 +24,7 @@ function getTemplates(){
           <room gravity="0" use_local_asset="room_plane" pos='${entries.length/2} 0 -3'>
             <text pos="${entries.length/2} 6 0" rotation="0 180 0" col="#000000" scale="10 10 1" text="${title}" lighting="false"/>
             <text pos="${entries.length/2} 5.3 0" rotation="0 180 0" col="#888888" scale="10 10 1" text="${room.url}" lighting="false"/>
-            ${this.JML.generatePortals(entries)}
+            ${getTemplates().generatePortals(entries)}
           </room>
       </fireboxroom>
     `,
@@ -42,19 +43,21 @@ function getTemplates(){
 }
 
 
-function exec(args){
+function exec(args,elation){
+  initURL(elation)
   return new Promise(elation.bind(this, function(resolve, reject) {
     var room = args.room;
     var datapath = elation.config.get('janusweb.datapath', '/media/janusweb');
     const hrefNoHash = String(args.url).replace(/#.*/,'')
-    const JML = this.JML.single( room, room.title, hrefNoHash )
+    const JML = getTemplates().single( room, room.title, hrefNoHash )
     const source   = room.parseSource( JML )
     const roomdata = room.janus.parser.parse( source.source, room.baseurl, datapath);
     resolve(roomdata);
   }));
 }
 
-async function parseSource(sourcecode, room){
+async function parseSource(sourcecode, room, elation){
+  initURL(elation)
   const isJML = /<fireboxroom>[\s\S]*?<\/fireboxroom>/si;
   if( sourcecode.match(isJML) ) return // JML takes precedence over microformats 
 
@@ -71,6 +74,7 @@ async function parseSource(sourcecode, room){
   if( portal ){ href  = portal.getAttribute("href") }
   if( href ){
     const hrefNoHash = href.replace(/#.*/,'')
+    const templates = getTemplates()
     if(entry || portal){
       console.log("[xrfragment] detected XRF microformat")
       if( entry ){
@@ -84,20 +88,20 @@ async function parseSource(sourcecode, room){
         if( !exist.ok ) return console.warn(`[xrfragment] ${link.outerHTML} resolves to invalid url ${hrefFull}`)
 
         // return JML
-        const JML = this.JML.single( room, title, hrefNoHash )
+        const JML = templates.single( room, title, hrefNoHash )
         return room.parseSource(JML)
       }
 
       if( portal ){
         const entries = [ ...el.querySelectorAll('link[as=spatial-portal]') ]
         // return JML
-        const JML = this.JML.collection(room,title,entries)
+        const JML = templates.collection(room,title,entries)
         return room.parseSource(JML)
       }
     } else{
       // return JML
-      const JML = this.JML.single( room, title, hrefNoHash )
-      return room.parseSource( this.JML.single( room, title, hrefNoHash ) )
+      const JML = templates.single( room, title, hrefNoHash )
+      return room.parseSource( JML )
     }
   }
 }
@@ -139,13 +143,17 @@ util.repositionReciprocalLink = function(spawnpoint,referrer){
       let url = room.getFullRoomURL(link.url);
       if (url == referrer) {
         link.position.copy(spawnpoint.position);
-        link.position.add( V(0,0,-player.fatness) );
+        link.position.add( V(0,0,-player.fatness*2) );
+        const inVR = room.engine.systems.render.views.xr && room.engine.systems.render.renderer.xr.isPresenting
+        if( !player.enabled && !inVR ){
+          link.position.x -= 1.5 // don't block desktop screen / cause false portal-click when activating mouse
+        }
       }
     });
   }
 }
 
-async function init(elation,opts){
+async function initURL(elation){
   let datapath  = elation.config.get('janusweb.datapath', '/media/janusweb')
 
   // the trick here is to wait until the scene-modelasset itself is fully 
@@ -158,22 +166,31 @@ async function init(elation,opts){
   }
 
   onSceneReady( async function(){
-    elation.events.add(null, 'spawnpoint',         util.spawnUserAtFragment.bind(this) ) // fired by room.setPlayerPosition()
-    room.setPlayerPosition()
-    // init XR Fragment levels
-    const levels = {}
     try{
-      levels['level0']  = await import(datapath + 'assets/translator/xrfragment/level0-sidecarfile.js')
-      levels['level1']  = await import(datapath + 'assets/translator/xrfragment/level2-hyperlink.js'),
-      levels['level3']  = await import(datapath + 'assets/translator/xrfragment/level3-xrhints.js'),
-      levels['level4']  = await import(datapath + 'assets/translator/xrfragment/level4-operators.js'),
-      levels['level7i'] = await import(datapath + 'assets/translator/xrfragment/level7-engine-prefixes.import.js'),
-      levels['level7e'] = await import(datapath + 'assets/translator/xrfragment/level7-engine-prefixes.export.js')
+      elation.events.add(null, 'spawnpoint', util.spawnUserAtFragment.bind(this) ) // fired by room.setPlayerPosition()
+      room.setPlayerPosition()
     }catch(e){ console.error(e) }
+    // init XR Fragment levels
+    levels['level0']  = await import(datapath + 'assets/translator/xrfragment/level0-sidecarfile.js')
+    levels['level4']  = await import(datapath + 'assets/translator/xrfragment/level4-operators.js')
+    levels['level7e'] = await import(datapath + 'assets/translator/xrfragment/level7-engine-prefixes.export.js')
     for( let i in levels ) levels[i].default(elation,room) // init!
   })
 
 }
 
+async function init(elation,opts){
+  // check any JML-room for: 
+  // level2 (href) hyperlinks: https://xrfragment.org/#%F0%9F%93%9C%20level2%3A%20explicit%20hyperlinks
+  // level3 (class) XR Hints : https://xrfragment.org/#%F0%9F%93%9Clevel3%3A%20XR%20hints
+  const datapath = elation.config.get('janusweb.datapath', '/media/janusweb');
+  if( !levels['level2']  ) levels['level2'] = await import(datapath + 'assets/translator/xrfragment/level2-hyperlink.js')
+  if( !levels['level3']  ) levels['level3'] = await import(datapath + 'assets/translator/xrfragment/level3-xrhints.js')
+  if( !levels['level7i'] ) levels['level7i'] = await import(datapath + 'assets/translator/xrfragment/level7-engine-prefixes.import.js')
+  levels['level2'].default(elation,room,{JML:true})
+  levels['level3'].default(elation,room,{JML:true})
+  levels['level7i'].default(elation,room,{JML:true})
+}
 
-export {getTemplates,exec,util,init,parseSource}
+
+export {getTemplates,exec,util,init,initURL,parseSource}
