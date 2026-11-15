@@ -13,20 +13,21 @@ export default function init(elation,room,opts){
   const defaultHints = 'vr ar portal embed hide collection'
   const classList      = defaultHints.split(' ')
 
-  let xrf_install_xrhints
+  let xrf_install_xrhints 
+  xrf_install_xrhints = function(room){
+    if( room.xrhints_installed ) return
 
-  xrf_install_xrhints = function(){
-    let startXR        = janus.engine.client.startXR 
     let client         = janus.engine.client
 
-    function getContext(){
-      let context = this.className ? this.classList : ['vr']
-
-      const render        = this.engine.systems.render
-      const session       = janus.engine.client?.xrplayer?.session
-      if( session && render?.renderer?.xr?.isPresenting ){
+    function getContext(room){
+      let context = room.className ? room.classList : ['vr']
+      const render        = room.engine.systems.render
+      let   mode          = xrf_install_xrhints.xrmode
+      const session       = janus.engine.client?.xrplayer?.session ||
+                            render.views.xr?.xrsession
+      if( session || mode){
         context = []
-        let mode = session.mode
+        mode = mode || session.mode
         // WebXR Polyfill fallback for convenient debugging 
         if( !mode ){
           try {
@@ -41,12 +42,16 @@ export default function init(elation,room,opts){
               }
           } catch (e) {}
         }
+        if( mode == 'immersive-vr' ) context = ['vr']
         if( mode == 'immersive-ar' ) context = ['ar']
-        if( this.nested ){
-          const embedded = this.nested.url_pos || this.nested.url_scale || this.nested.url_rotation
+        if( room.nested ){
+          const embedded = room.nested.url_pos || room.nested.url_scale || room.nested.url_rotation
           context.push( embedded ? 'embed' : 'portal')
         }
       }
+      context = window.testhint || context
+      console.log('context = ' + context.join(' '))
+      document.title = context.join(' ')
       return context
     }
 
@@ -58,6 +63,7 @@ export default function init(elation,room,opts){
       if( opts.three && child.userData['class'] ){
         childClassList = child.userData['class'].split(" ")
       }
+      childClassList = childClassList.filter( (c) => c ) // sometimes janusweb gives empty elements
       return childClassList
     }
 
@@ -89,20 +95,20 @@ export default function init(elation,room,opts){
     }
 
     function applyXRLayers(child,opts){
-      const hasOverlap    = (a,b) => a.filter( (className) => ~b.indexOf(className) ).length > 0
+      const isXRLayer    = (a,b) => a.filter( (className) => ~b.indexOf(className) ).length > 0
       let visible = true 
-      const childClassList = getClassList(child,opts)
+      let childClassList = getClassList(child,opts)
       if( childClassList.length ){
-        if( hasOverlap( childClassList, classList ) ){
-          visible = hasOverlap( childClassList, opts.context )
+        if( isXRLayer( childClassList, classList ) ){
+          visible = isXRLayer( childClassList, opts.context )
         }
       }
-      if( child.visible && !visible ){ 
-        const hide = (child) => child.visible = false
-        hide(child) // hidden in this context (works for both janus+three objects)
+      if( child.visible != visible ){ 
+        const update = (child,state) => child.visible = state
+        update(child, visible) // works for both janus+three objects
         // also apply to children (janus=markup) (three=three objects)
-        if( opts.janus ) traverseJanusObjects( child.children, hide )
-        if( opts.three ) child.traverse( hide )
+        if( opts.janus ) traverseJanusObjects( child.children, (c) => update(c,visible) )
+        if( opts.three ) child.traverse( (c) => update(c,visible) )
       }
     }
 
@@ -130,7 +136,7 @@ export default function init(elation,room,opts){
       }
     }
 
-    function startAnimation(){
+    function startAnimation(room){
       try{
         const animations = room.objects.scene.modelasset.animations
         if( animations.length == 1 ){
@@ -139,21 +145,33 @@ export default function init(elation,room,opts){
       }catch(e){ console.log("no single-animation found") }
     }
 
+    startAnimation(room)
     applyXRHints({ 
-      context:   getContext.apply(room),
+      context:   getContext(room),
       callbacks: [ applyXRLayers, applyOccludable ]
     })
-    startAnimation()
 
-    if( !client.startXR.xrhints ){
-     client.startXR = function(mode,opts){
-        startXR.apply(client, [mode,opts])
-        //setTimeout( () => applyXRLayers.apply(room), 100 )
+    if( !xrf_install_xrhints.installed ){
+      let startXR        = janus.engine.client.startXR
+      janus.engine.client.startXR = function(mode){
+        xrf_install_xrhints.xrmode = mode || 'immersive-vr'
+        startXR.apply(janus.engine.client,[mode])
       }
+      elation.events.add(null, 'xrsessionstart', (e) => {
+        applyXRHints({ context:   getContext(room), callbacks: [ applyXRLayers ]})
+      })
+      elation.events.add(null, 'xrsessionend', (e) => {
+        xrf_install_xrhints.xrmode = false
+        applyXRHints({ context:   getContext(room), callbacks: [ applyXRLayers ]})
+      })
+      xrf_install_xrhints.installed = true
     }
 
+    room.xrhints_installed = true
   }
 
-  elation.events.add(null, 'room_load_complete', xrf_install_xrhints )
+  elation.events.add(null, 'room_load_complete', (e) => {
+    xrf_install_xrhints(room) 
+  })
 
 }

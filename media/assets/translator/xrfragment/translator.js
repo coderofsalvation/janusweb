@@ -1,4 +1,5 @@
 let util = {}
+let levels = {}
 
 function getTemplates(){
   return {
@@ -42,7 +43,8 @@ function getTemplates(){
 }
 
 
-function exec(args){
+function exec(args,elation){
+  initURL(elation)
   return new Promise(elation.bind(this, function(resolve, reject) {
     var room = args.room;
     var datapath = elation.config.get('janusweb.datapath', '/media/janusweb');
@@ -54,7 +56,8 @@ function exec(args){
   }));
 }
 
-async function parseSource(sourcecode, room){
+async function parseSource(sourcecode, room, elation){
+  initURL(elation)
   const isJML = /<fireboxroom>[\s\S]*?<\/fireboxroom>/si;
   if( sourcecode.match(isJML) ) return // JML takes precedence over microformats 
 
@@ -150,7 +153,7 @@ util.repositionReciprocalLink = function(spawnpoint,referrer){
   }
 }
 
-async function init(elation,opts){
+async function initURL(elation){
   let datapath  = elation.config.get('janusweb.datapath', '/media/janusweb')
 
   // the trick here is to wait until the scene-modelasset itself is fully 
@@ -168,17 +171,26 @@ async function init(elation,opts){
       room.setPlayerPosition()
     }catch(e){ console.error(e) }
     // init XR Fragment levels
-    let levels = {}
     levels['level0']  = await import(datapath + 'assets/translator/xrfragment/level0-sidecarfile.js')
-    levels['level1']  = await import(datapath + 'assets/translator/xrfragment/level2-hyperlink.js')
-    levels['level3']  = await import(datapath + 'assets/translator/xrfragment/level3-xrhints.js')
     levels['level4']  = await import(datapath + 'assets/translator/xrfragment/level4-operators.js')
-    levels['level7i'] = await import(datapath + 'assets/translator/xrfragment/level7-engine-prefixes.import.js')
     levels['level7e'] = await import(datapath + 'assets/translator/xrfragment/level7-engine-prefixes.export.js')
     for( let i in levels ) levels[i].default(elation,room) // init!
   })
 
 }
 
+async function init(elation,opts){
+  // check any JML-room for: 
+  // level2 (href) hyperlinks: https://xrfragment.org/#%F0%9F%93%9C%20level2%3A%20explicit%20hyperlinks
+  // level3 (class) XR Hints : https://xrfragment.org/#%F0%9F%93%9Clevel3%3A%20XR%20hints
+  const datapath = elation.config.get('janusweb.datapath', '/media/janusweb');
+  if( !levels['level2']  ) levels['level2'] = await import(datapath + 'assets/translator/xrfragment/level2-hyperlink.js')
+  if( !levels['level3']  ) levels['level3'] = await import(datapath + 'assets/translator/xrfragment/level3-xrhints.js')
+  if( !levels['level7i'] ) levels['level7i'] = await import(datapath + 'assets/translator/xrfragment/level7-engine-prefixes.import.js')
+  levels['level2'].default(elation,room,{JML:true})
+  levels['level3'].default(elation,room,{JML:true})
+  levels['level7i'].default(elation,room,{JML:true})
+}
 
-export {getTemplates,exec,util,init,parseSource}
+
+export {getTemplates,exec,util,init,initURL,parseSource}
